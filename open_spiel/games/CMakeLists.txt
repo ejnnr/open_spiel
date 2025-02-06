@@ -57,6 +57,14 @@ set(GAME_SOURCES
   dark_hex/dark_hex.h
   deep_sea/deep_sea.cc
   deep_sea/deep_sea.h
+  dominion/dominion.cc
+  dominion/dominion.h
+  dominion/player_state.cc
+  dominion/player_state.h
+  dominion/card_registry.cc
+  dominion/card_registry.h
+  dominion/cards.cc
+  dominion/cards.h
   dots_and_boxes/dots_and_boxes.cc
   dots_and_boxes/dots_and_boxes.h
   dynamic_routing/dynamic_routing_data.cc
@@ -397,6 +405,10 @@ add_test(dark_hex_test dark_hex_test)
 add_executable(deep_sea_test deep_sea/deep_sea_test.cc ${OPEN_SPIEL_OBJECTS}
                $<TARGET_OBJECTS:tests>)
 add_test(deep_sea_test deep_sea_test)
+
+add_executable(dominion_test dominion/dominion_test.cc ${OPEN_SPIEL_OBJECTS}
+               $<TARGET_OBJECTS:tests>)
+add_test(dominion_test dominion_test)
 
 add_executable(dots_and_boxes_test dots_and_boxes/dots_and_boxes_test.cc ${OPEN_SPIEL_OBJECTS}
                $<TARGET_OBJECTS:tests>)
