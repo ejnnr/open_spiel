@@ -38,7 +38,7 @@ namespace open_spiel
                 }
                 if (!deck.empty())
                 {
-                    hand.push_back(std::move(deck.back()));
+                    hand.push_back(deck.back());
                     deck.pop_back();
                 }
             }
@@ -50,7 +50,7 @@ namespace open_spiel
             {
                 if (!hand[hand_index]->IsPlayable())
                     throw std::runtime_error("Card is not playable");
-                playing_area.push_back(std::move(hand[hand_index]));
+                playing_area.push_back(hand[hand_index]);
                 hand.erase(hand.begin() + hand_index);
                 return *playing_area.back();
             }

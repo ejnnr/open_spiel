@@ -18,6 +18,12 @@ namespace open_spiel
         {
             void init()
             {
+                // Guard against multiple initializations
+                if (!registry_vector.empty())
+                {
+                    return;
+                }
+
                 registry_vector.push_back(std::make_unique<Copper>());
                 registry_vector.push_back(std::make_unique<Silver>());
                 registry_vector.push_back(std::make_unique<Gold>());

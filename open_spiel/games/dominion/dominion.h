@@ -84,6 +84,9 @@ namespace open_spiel
       std::unique_ptr<State> Clone() const override;
       std::vector<Action> LegalActions() const override;
 
+      // Serialization methods
+      std::string Serialize() const override;
+
       // Dominion-specific helper functions
       void PlayCard(size_t hand_index);
       void Buy(size_t card_index);
@@ -112,12 +115,12 @@ namespace open_spiel
       int n_buys;
       int n_coins;
       int turn;
+      Player cur_player_; // Player whose turn it is.
 
     protected:
       void DoApplyAction(Action action_id) override;
 
     private:
-      Player cur_player_; // Player whose turn it is.
     };
 
     class DominionGame : public Game
@@ -131,6 +134,7 @@ namespace open_spiel
       double MaxUtility() const override { return 1; }
       absl::optional<double> UtilitySum() const override { return 0; }
       int MaxGameLength() const override;
+      std::unique_ptr<State> DeserializeState(const std::string &str) const override;
 
     private:
       // Number of players.

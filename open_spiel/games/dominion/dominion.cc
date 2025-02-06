@@ -91,8 +91,12 @@ namespace open_spiel
       case DominionAction::Type::kEnd:
         return "End";
       case DominionAction::Type::kSelectSupplyCard:
-        return "Select supply card " + std::to_string(action.index);
+        return "Select supply card " + card_registry::get(action.index)->name;
       case DominionAction::Type::kSelectHandCard:
+        // OpenSpiel doesn't allow duplicate action strings, so need to use the index.
+        // TODO: make it so there's only one action per card type in hand, given that
+        // they're equivalent.
+        // return "Select hand card " + CurrentHand()[action.index]->name;
         return "Select hand card " + std::to_string(action.index);
       }
     }
@@ -180,6 +184,7 @@ namespace open_spiel
         }
       }
       actions.push_back(DominionAction(DominionAction::Type::kEnd).ToAction());
+      std::sort(actions.begin(), actions.end());
       return actions;
     }
 
@@ -441,5 +446,118 @@ namespace open_spiel
       // A bet for each side and number of total dice, plus "liar" action.
       return 1000;
     }
+
+    std::string DominionState::Serialize() const
+    {
+      std::stringstream ss;
+
+      // Game state
+      ss << static_cast<int>(phase) << " " << n_actions << " " << n_buys << " "
+         << n_coins << " " << turn << " " << cur_player_ << "\n";
+
+      // Supply counts
+      for (int count : supply_counts)
+      {
+        ss << count << " ";
+      }
+      ss << "\n";
+
+      // Trash pile
+      ss << trash.size() << " ";
+      for (const Card *card : trash)
+      {
+        ss << card_registry::get_id(card->name) << " ";
+      }
+      ss << "\n";
+
+      // Player states
+      ss << players.size() << "\n";
+      for (const auto &player : players)
+      {
+        // Serialize each pile (deck, hand, playing_area, discard)
+        // For each pile, first write size, then card indices
+        auto serialize_pile = [&ss](const std::vector<Card *> &pile)
+        {
+          ss << pile.size() << " ";
+          for (const Card *card : pile)
+          {
+            ss << card_registry::get_id(card->name) << " ";
+          }
+          ss << "\n";
+        };
+
+        serialize_pile(player.deck);
+        serialize_pile(player.hand);
+        serialize_pile(player.playing_area);
+        serialize_pile(player.discard);
+      }
+
+      return ss.str();
+    }
+
+    std::unique_ptr<State> DominionGame::DeserializeState(const std::string &str) const
+    {
+      std::istringstream ss(str);
+      auto state = std::make_unique<DominionState>(shared_from_this());
+
+      // Game state
+      int phase_int;
+      ss >> phase_int >> state->n_actions >> state->n_buys >> state->n_coins >> state->turn >> state->cur_player_;
+      state->phase = static_cast<Phase>(phase_int);
+
+      // Supply counts
+      state->supply_counts.resize(card_registry::num_cards());
+      for (int &count : state->supply_counts)
+      {
+        ss >> count;
+      }
+
+      // Trash pile
+      int trash_size;
+      ss >> trash_size;
+      state->trash.clear();
+      state->trash.reserve(trash_size);
+      for (int i = 0; i < trash_size; ++i)
+      {
+        int card_id;
+        ss >> card_id;
+        state->trash.push_back(card_registry::get(card_id));
+      }
+
+      // Player states
+      int num_players;
+      ss >> num_players;
+      state->players.clear();
+      state->players.reserve(num_players);
+
+      for (int i = 0; i < num_players; ++i)
+      {
+        state->players.emplace_back(false); // Don't do default setup
+        auto &player = state->players.back();
+
+        // Helper to deserialize a pile of cards
+        auto deserialize_pile = [&ss](std::vector<Card *> &pile)
+        {
+          int size;
+          ss >> size;
+          pile.clear();
+          pile.reserve(size);
+          for (int j = 0; j < size; ++j)
+          {
+            int card_id;
+            ss >> card_id;
+            pile.push_back(card_registry::get(card_id));
+          }
+        };
+
+        deserialize_pile(player.deck);
+        deserialize_pile(player.hand);
+        deserialize_pile(player.playing_area);
+        deserialize_pile(player.discard);
+      }
+
+      return state;
+    }
+
   } // namespace dominion
 } // namespace open_spiel
