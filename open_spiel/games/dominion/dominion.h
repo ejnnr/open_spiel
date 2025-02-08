@@ -19,11 +19,13 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <coroutine>
+#include <random>
 
 #include "open_spiel/spiel.h"
 #include "open_spiel/spiel_utils.h"
 #include "player_state.h"
-
+#include "effects.h"
 // A simple game that includes chance and imperfect information
 // https://en.wikipedia.org/wiki/Liar%27s_dice
 //
@@ -89,8 +91,10 @@ namespace open_spiel
 
       // Dominion-specific helper functions
       void PlayCard(size_t hand_index);
+      Coroutine DrawCardForPlayer(int n, Player player_id);
+      Coroutine DrawCard(int n) { return DrawCardForPlayer(n, CurrentPlayer()); };
       void Buy(size_t card_index);
-      void NextPhase();
+      Coroutine NextPhase();
       void ResetCounters();
       bool IsGameOver() const;
 
@@ -116,6 +120,8 @@ namespace open_spiel
       int n_coins;
       int turn;
       Player cur_player_; // Player whose turn it is.
+      std::optional<std::coroutine_handle<>> continuation_;
+      std::mt19937 rng_; // Random number generator
 
     protected:
       void DoApplyAction(Action action_id) override;

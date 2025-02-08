@@ -38,7 +38,6 @@ namespace open_spiel
         {
         public:
             PlayerState(bool default_setup = true);
-            void DrawCard(int n = 1);
             Card &PlayCard(size_t hand_index);
             int VpCount() const;
 

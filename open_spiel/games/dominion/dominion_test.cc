@@ -48,19 +48,6 @@ namespace open_spiel
           SPIEL_CHECK_TRUE(player.playing_area.empty());
         }
 
-        // Test draw card
-        {
-          PlayerState player{false};
-          SPIEL_CHECK_TRUE(player.hand.empty());
-          SPIEL_CHECK_TRUE(player.deck.empty());
-
-          player.deck.push_back(card_registry::get("Copper"));
-          player.DrawCard();
-          SPIEL_CHECK_EQ(player.hand.size(), 1);
-          SPIEL_CHECK_EQ(player.deck.size(), 0);
-          SPIEL_CHECK_TRUE(player.hand.back()->IsType(CardType::Treasure));
-        }
-
         // Test play card
         {
           PlayerState player{false};

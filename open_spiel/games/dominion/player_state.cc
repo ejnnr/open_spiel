@@ -21,27 +21,6 @@ namespace open_spiel
                 deck.push_back(card_registry::get("Estate"));
             for (int i = 0; i < 7; ++i)
                 deck.push_back(card_registry::get("Copper"));
-            std::shuffle(deck.begin(), deck.end(), std::random_device());
-
-            for (int i = 0; i < 5; ++i)
-                DrawCard(1);
-        }
-
-        void PlayerState::DrawCard(int n)
-        {
-            for (int i = 0; i < n; ++i)
-            {
-                if (deck.empty())
-                {
-                    std::swap(deck, discard);
-                    std::shuffle(deck.begin(), deck.end(), std::random_device());
-                }
-                if (!deck.empty())
-                {
-                    hand.push_back(deck.back());
-                    deck.pop_back();
-                }
-            }
         }
 
         Card &PlayerState::PlayCard(size_t hand_index)

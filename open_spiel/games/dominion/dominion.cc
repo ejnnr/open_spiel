@@ -14,12 +14,12 @@
 
 #include "open_spiel/games/dominion/dominion.h"
 #include "open_spiel/games/dominion/card_registry.h"
+#include "open_spiel/game_parameters.h"
 
 #include <algorithm>
 #include <array>
 #include <utility>
-
-#include "open_spiel/game_parameters.h"
+#include <coroutine>
 
 namespace open_spiel
 {
@@ -36,7 +36,7 @@ namespace open_spiel
           /*short_name=*/"dominion",
           /*long_name=*/"Dominion",
           GameType::Dynamics::kSequential,
-          GameType::ChanceMode::kDeterministic,
+          GameType::ChanceMode::kSampledStochastic,
           GameType::Information::kImperfectInformation,
           // TODO: only the two-player version is zero sum
           GameType::Utility::kZeroSum,
@@ -78,7 +78,9 @@ namespace open_spiel
           n_actions(0),
           n_buys(0),
           n_coins(0),
-          turn(0)
+          turn(0),
+          continuation_(std::nullopt),
+          rng_(std::random_device{}())
     {
     }
 
@@ -103,7 +105,11 @@ namespace open_spiel
 
     int DominionState::CurrentPlayer() const
     {
-      if (IsTerminal())
+      if (continuation_)
+      {
+        return kChancePlayerId;
+      }
+      else if (IsTerminal())
       {
         return kTerminalPlayerId;
       }
@@ -115,6 +121,20 @@ namespace open_spiel
 
     void DominionState::DoApplyAction(Action action_id)
     {
+      // if (pending_shuffle_)
+      // {
+      //   std::shuffle(CurrentDeck().begin(), CurrentDeck().end(), rng_);
+      //   pending_shuffle_->resume();
+      //   pending_shuffle_ = std::nullopt;
+      //   return;
+      // }
+      if (continuation_)
+      {
+        continuation_->resume();
+        continuation_ = std::nullopt;
+        return;
+      }
+
       DominionAction action = DominionAction::FromAction(action_id);
       if (phase == Phase::Action)
       {
@@ -256,6 +276,26 @@ namespace open_spiel
       card.Play(*this);
     }
 
+    Coroutine DominionState::DrawCardForPlayer(int n, Player player_id)
+    {
+      PlayerState &player = players[player_id];
+      for (int i = 0; i < n; ++i)
+      {
+        if (player.deck.empty() && !player.discard.empty())
+        {
+          co_await ActionAwaiter{*this};
+          std::swap(player.deck, player.discard);
+          std::shuffle(player.deck.begin(), player.deck.end(), rng_);
+        }
+        if (!player.deck.empty())
+        {
+          player.hand.push_back(player.deck.back());
+          player.deck.pop_back();
+        }
+      }
+      co_return;
+    }
+
     std::vector<Card *> &DominionState::CurrentDeck()
     {
       return CurrentPlayerState().deck;
@@ -341,7 +381,7 @@ namespace open_spiel
       return n_piles_empty >= 3;
     }
 
-    void DominionState::NextPhase()
+    Coroutine DominionState::NextPhase()
     {
       if (phase == Phase::Action)
       {
@@ -359,8 +399,7 @@ namespace open_spiel
                               player.hand.end());
         player.hand.clear();
         // Draw next hand
-        for (int i = 0; i < 5; ++i)
-          player.DrawCard();
+        co_await DrawCardForPlayer(5, cur_player_);
 
         // next player
         cur_player_ = (cur_player_ + 1) % num_players_;
@@ -436,15 +475,17 @@ namespace open_spiel
       state->ResetCounters();
       state->players.reserve(num_players_);
       for (int i = 0; i < num_players_; ++i)
+      {
         state->players.push_back(PlayerState{true});
+        state->DrawCardForPlayer(5, i);
+      }
 
       return state;
     }
 
     int DominionGame::MaxGameLength() const
     {
-      // A bet for each side and number of total dice, plus "liar" action.
-      return 1000;
+      return 10000;
     }
 
     std::string DominionState::Serialize() const

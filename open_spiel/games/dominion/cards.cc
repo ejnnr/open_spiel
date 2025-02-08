@@ -17,59 +17,72 @@ namespace open_spiel
             return false;
         }
 
-        void BasicTreasure::Play(DominionState &state) const { state.n_coins += value; }
-
-        void Village::Play(DominionState &state) const
+        Coroutine BasicTreasure::Play(DominionState &state) const
         {
-            state.CurrentPlayerState().DrawCard(1);
-            state.n_actions += 2;
+            state.n_coins += value;
+            co_return;
         }
 
-        void Woodcutter::Play(DominionState &state) const
+        Coroutine Village::Play(DominionState &state) const
+        {
+            co_await state.DrawCard(1);
+            state.n_actions += 2;
+            co_return;
+        }
+
+        Coroutine Woodcutter::Play(DominionState &state) const
         {
             state.n_buys += 1;
             state.n_coins += 2;
+            co_return;
         }
 
-        void Smithy::Play(DominionState &state) const
+        Coroutine Smithy::Play(DominionState &state) const
         {
-            state.CurrentPlayerState().DrawCard(3);
+            auto drawResult = state.DrawCard(3);
+            co_await drawResult;
+            co_return;
         }
 
-        void Market::Play(DominionState &state) const
+        Coroutine Market::Play(DominionState &state) const
         {
-            state.CurrentPlayerState().DrawCard(1);
+            co_await state.DrawCard(1);
             state.n_actions += 1;
             state.n_coins += 1;
             state.n_buys += 1;
+            co_return;
         }
 
-        void Festival::Play(DominionState &state) const
+        Coroutine Festival::Play(DominionState &state) const
         {
             state.n_actions += 2;
             state.n_buys += 1;
             state.n_coins += 2;
+            co_return;
         }
 
-        void Laboratory::Play(DominionState &state) const
+        Coroutine Laboratory::Play(DominionState &state) const
         {
-            state.CurrentPlayerState().DrawCard(2);
+            co_await state.DrawCard(2);
             state.n_actions += 1;
+            co_return;
         }
 
-        void CouncilRoom::Play(DominionState &state) const
+        Coroutine CouncilRoom::Play(DominionState &state) const
         {
-            state.CurrentPlayerState().DrawCard(4);
+            co_await state.DrawCard(4);
             state.n_buys += 1;
             for (size_t i = 0; i < state.players.size(); ++i)
             {
                 if (i != state.CurrentPlayer())
-                    state.players[i].DrawCard(1);
+                    co_await state.DrawCardForPlayer(1, i);
             }
+            co_return;
         }
 
-        void Workshop::Play(DominionState &state) const
+        Coroutine Workshop::Play(DominionState &state) const
         {
+            co_return;
         }
     } // namespace dominion
 } // namespace open_spiel
