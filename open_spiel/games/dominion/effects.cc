@@ -12,5 +12,10 @@ namespace open_spiel
         {
             state.continuation_ = handle;
         }
+
+        void Coroutine::await_suspend(std::coroutine_handle<Promise> handle)
+        {
+            this->promise().continuation_ = handle;
+        }
     }
 }

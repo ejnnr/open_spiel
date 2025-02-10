@@ -25,7 +25,7 @@ namespace open_spiel
 
         Coroutine Village::Play(DominionState &state) const
         {
-            // co_await state.DrawCard(1);
+            state.DrawCard(1);
             state.n_actions += 2;
             co_return;
         }
@@ -39,14 +39,13 @@ namespace open_spiel
 
         Coroutine Smithy::Play(DominionState &state) const
         {
-            auto drawResult = state.DrawCard(3);
-            // co_await drawResult;
+            state.DrawCard(3);
             co_return;
         }
 
         Coroutine Market::Play(DominionState &state) const
         {
-            // co_await state.DrawCard(1);
+            state.DrawCard(1);
             state.n_actions += 1;
             state.n_coins += 1;
             state.n_buys += 1;
@@ -63,19 +62,19 @@ namespace open_spiel
 
         Coroutine Laboratory::Play(DominionState &state) const
         {
-            // co_await state.DrawCard(2);
+            state.DrawCard(2);
             state.n_actions += 1;
             co_return;
         }
 
         Coroutine CouncilRoom::Play(DominionState &state) const
         {
-            // co_await state.DrawCard(4);
+            co_await state.DrawCard(4);
             state.n_buys += 1;
             for (size_t i = 0; i < state.players.size(); ++i)
             {
-                // if (i != state.CurrentPlayer())
-                // co_await state.DrawCardForPlayer(1, i);
+                if (i != state.cur_player_)
+                    co_await state.DrawCardForPlayer(1, i);
             }
             co_return;
         }

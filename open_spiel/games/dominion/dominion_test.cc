@@ -28,18 +28,13 @@ namespace open_spiel
 
       namespace testing = open_spiel::testing;
 
-      void BasicDominionTests()
-      {
-        testing::LoadGameTest("dominion");
-        std::shared_ptr<const Game> game = LoadGame("dominion");
-        testing::RandomSimTest(*game, /*num_sims=*/10);
-      }
-
       void PlayerStateTests()
       {
         // Test play card
         {
           PlayerState player{false};
+          // Need to call this manually here since we're not loading a game
+          card_registry::init();
           player.hand.push_back(card_registry::get("Copper"));
           Card &played_card = player.PlayCard(0);
           SPIEL_CHECK_TRUE(player.hand.empty());
@@ -104,6 +99,111 @@ namespace open_spiel
         SPIEL_CHECK_EQ(dominion_state->CurrentPlayer(), 1);
       }
 
+      void SmithyTests()
+      {
+        GameParameters params;
+        std::shared_ptr<const Game> game = LoadGame("dominion", params);
+        std::unique_ptr<State> state = game->NewInitialState();
+        DominionState *dominion_state = static_cast<DominionState *>(state.get());
+
+        // Set up a specific state where player has Smithy and 1 card in deck
+        dominion_state->players[0].hand.clear();
+        dominion_state->players[0].deck.clear();
+        dominion_state->players[0].discard.clear();
+
+        // Add Smithy to hand
+        dominion_state->players[0].hand.push_back(card_registry::get("Smithy"));
+        // Add one Copper to deck
+        dominion_state->players[0].deck.push_back(card_registry::get("Copper"));
+        // Add two Silvers to discard
+        dominion_state->players[0].discard.push_back(card_registry::get("Silver"));
+        dominion_state->players[0].discard.push_back(card_registry::get("Silver"));
+
+        // Play Smithy (index 0 in hand)
+        dominion_state->PlayCard(0);
+        // First card should be drawn from deck
+        SPIEL_CHECK_EQ(dominion_state->players[0].hand.size(), 1);
+        SPIEL_CHECK_EQ(dominion_state->players[0].hand[0]->name, "Copper");
+        // And we haven't shuffled yet
+        SPIEL_CHECK_EQ(dominion_state->players[0].deck.size(), 0);
+        SPIEL_CHECK_EQ(dominion_state->players[0].discard.size(), 2);
+        SPIEL_CHECK_TRUE(dominion_state->IsChanceNode());
+
+        // Apply action to handle shuffle
+        dominion_state->ApplyAction(0);
+        // After shuffle and drawing remaining 2 cards
+        SPIEL_CHECK_EQ(dominion_state->players[0].hand.size(), 3);
+        SPIEL_CHECK_EQ(dominion_state->players[0].deck.size(), 0);
+        SPIEL_CHECK_EQ(dominion_state->players[0].discard.size(), 0);
+        // Verify Smithy is in playing area
+        SPIEL_CHECK_EQ(dominion_state->players[0].playing_area.size(), 1);
+        SPIEL_CHECK_EQ(dominion_state->players[0].playing_area[0]->name, "Smithy");
+      }
+
+      void CouncilRoomTests()
+      {
+        GameParameters params;
+        std::shared_ptr<const Game> game = LoadGame("dominion", params);
+        std::unique_ptr<State> state = game->NewInitialState();
+        DominionState *dominion_state = static_cast<DominionState *>(state.get());
+
+        // Set up specific states for both players
+        // Player 0 (active player):
+        dominion_state->players[0].hand.clear();
+        dominion_state->players[0].deck.clear();
+        dominion_state->players[0].discard.clear();
+        // Add Council Room to hand
+        dominion_state->players[0].hand.push_back(card_registry::get("Council Room"));
+        // Add one card to deck
+        dominion_state->players[0].deck.push_back(card_registry::get("Copper"));
+        // Add three cards to discard (for remaining 3 draws after shuffle)
+        dominion_state->players[0].discard.push_back(card_registry::get("Silver"));
+        dominion_state->players[0].discard.push_back(card_registry::get("Silver"));
+        dominion_state->players[0].discard.push_back(card_registry::get("Silver"));
+
+        // Player 1:
+        dominion_state->players[1].hand.clear();
+        dominion_state->players[1].deck.clear();
+        dominion_state->players[1].discard.clear();
+        // Add one card to discard (will need to shuffle to draw)
+        dominion_state->players[1].discard.push_back(card_registry::get("Duchy"));
+
+        // Play Council Room (index 0 in hand)
+        dominion_state->PlayCard(0);
+
+        // Check initial state after first draw but before shuffle
+        SPIEL_CHECK_EQ(dominion_state->players[0].hand.size(), 1);
+        SPIEL_CHECK_EQ(dominion_state->players[0].hand[0]->name, "Copper");
+        SPIEL_CHECK_EQ(dominion_state->players[0].deck.size(), 0);
+        SPIEL_CHECK_EQ(dominion_state->players[0].discard.size(), 3);
+        // Player 1 shouldn't have drawn yet
+        SPIEL_CHECK_EQ(dominion_state->players[1].hand.size(), 0);
+        SPIEL_CHECK_TRUE(dominion_state->IsChanceNode());
+
+        // Apply action to handle player 0's shuffle
+        dominion_state->ApplyAction(0);
+        // After shuffle and drawing remaining 3 cards for player 0
+        SPIEL_CHECK_EQ(dominion_state->players[0].hand.size(), 4);
+        SPIEL_CHECK_EQ(dominion_state->players[0].deck.size(), 0);
+        SPIEL_CHECK_EQ(dominion_state->players[0].discard.size(), 0);
+        // Player 1 still shouldn't have drawn, we only did player 0's shuffle
+        SPIEL_CHECK_EQ(dominion_state->players[1].hand.size(), 0);
+        SPIEL_CHECK_TRUE(dominion_state->IsChanceNode());
+
+        // Apply action to handle player 1's shuffle
+        dominion_state->ApplyAction(0);
+        // Player 1 should now have drawn from their shuffled discard
+        SPIEL_CHECK_EQ(dominion_state->players[1].hand.size(), 1);
+        SPIEL_CHECK_EQ(dominion_state->players[1].hand[0]->name, "Duchy");
+        SPIEL_CHECK_EQ(dominion_state->players[1].deck.size(), 0);
+        SPIEL_CHECK_EQ(dominion_state->players[1].discard.size(), 0);
+        // Verify Council Room is in playing area
+        SPIEL_CHECK_EQ(dominion_state->players[0].playing_area.size(), 1);
+        SPIEL_CHECK_EQ(dominion_state->players[0].playing_area[0]->name, "Council Room");
+        // Verify buy was added
+        SPIEL_CHECK_EQ(dominion_state->n_buys, 2);
+      }
+
       void GameOverTests()
       {
         card_registry::init();
@@ -136,14 +236,23 @@ namespace open_spiel
         SPIEL_CHECK_TRUE(dominion_state->IsGameOver());
       }
 
+      void BasicDominionTests()
+      {
+        testing::LoadGameTest("dominion");
+        std::shared_ptr<const Game> game = LoadGame("dominion");
+        testing::RandomSimTest(*game, /*num_sims=*/10);
+      }
+
     } // namespace
   } // namespace dominion
 } // namespace open_spiel
 
 int main(int argc, char **argv)
 {
-  open_spiel::dominion::BasicDominionTests();
   open_spiel::dominion::PlayerStateTests();
   open_spiel::dominion::GameStateTests();
+  open_spiel::dominion::SmithyTests();
+  open_spiel::dominion::CouncilRoomTests();
   open_spiel::dominion::GameOverTests();
+  open_spiel::dominion::BasicDominionTests();
 }

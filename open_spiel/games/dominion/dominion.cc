@@ -130,8 +130,11 @@ namespace open_spiel
       // }
       if (continuation_)
       {
-        continuation_->resume();
+        auto continuation_copy = continuation_;
+        // Important that we reset continuation_ before resuming rather than after,
+        // since resuming may itself set a new continuation_.
         continuation_ = std::nullopt;
+        continuation_copy->resume();
         return;
       }
 
