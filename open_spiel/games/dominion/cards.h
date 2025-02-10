@@ -1,159 +1,139 @@
 #pragma once
 
-#include "effects.h"
-
 #include <set>
 #include <string>
 
-namespace open_spiel
-{
-    namespace dominion
-    {
-        class DominionState;
+#include "effects.h"
 
-        enum class CardType
-        {
-            Treasure,
-            Victory,
-            Action,
-        };
+namespace open_spiel {
+namespace dominion {
+class DominionState;
 
-        class Card
-        {
-        public:
-            const std::set<CardType> card_types;
-            const int cost;
-            const int vp;
-            const std::string name;
+enum class CardType {
+  Treasure,
+  Victory,
+  Action,
+};
 
-            // Card(Card&&) = default;
-            // Card& operator=(Card&&) = default;
+class Card {
+ public:
+  const std::set<CardType> card_types;
+  const int cost;
+  const int vp;
+  const std::string name;
 
-            // // Cards should not be copied
-            // Card(const Card&) = delete;
-            // Card& operator=(const Card&) = delete;
+  // Card(Card&&) = default;
+  // Card& operator=(Card&&) = default;
 
-            virtual Coroutine Play(DominionState &state) const {};
-            bool IsType(CardType type) const;
-            bool IsPlayable() const;
-            bool IsTreasure() const { return IsType(CardType::Treasure); }
-            bool IsVictory() const { return IsType(CardType::Victory); }
-            bool IsAction() const { return IsType(CardType::Action); }
+  // // Cards should not be copied
+  // Card(const Card&) = delete;
+  // Card& operator=(const Card&) = delete;
 
-        protected:
-            Card(std::set<CardType> card_types, int cost, const std::string &name,
-                 int vp = 0)
-                : card_types{std::move(card_types)}, cost{cost}, name{name}, vp{vp} {}
-        };
+  virtual Coroutine Play(DominionState &state) const {};
+  bool IsType(CardType type) const;
+  bool IsPlayable() const;
+  bool IsTreasure() const { return IsType(CardType::Treasure); }
+  bool IsVictory() const { return IsType(CardType::Victory); }
+  bool IsAction() const { return IsType(CardType::Action); }
 
-        class Village : public Card
-        {
-        public:
-            Village() : Card{{CardType::Action}, 3, "Village"} {}
-            Coroutine Play(DominionState &state) const override;
-        };
+ protected:
+  Card(std::set<CardType> card_types, int cost, const std::string &name,
+       int vp = 0)
+      : card_types{std::move(card_types)}, cost{cost}, name{name}, vp{vp} {}
+};
 
-        class Woodcutter : public Card
-        {
-        public:
-            Woodcutter() : Card{{CardType::Action}, 3, "Woodcutter"} {}
-            Coroutine Play(DominionState &state) const override;
-        };
+class Village : public Card {
+ public:
+  Village() : Card{{CardType::Action}, 3, "Village"} {}
+  Coroutine Play(DominionState &state) const override;
+};
 
-        class Smithy : public Card
-        {
-        public:
-            Smithy() : Card{{CardType::Action}, 4, "Smithy"} {}
-            Coroutine Play(DominionState &state) const override;
-        };
+class Woodcutter : public Card {
+ public:
+  Woodcutter() : Card{{CardType::Action}, 3, "Woodcutter"} {}
+  Coroutine Play(DominionState &state) const override;
+};
 
-        class Market : public Card
-        {
-        public:
-            Market() : Card{{CardType::Action}, 5, "Market"} {}
-            Coroutine Play(DominionState &state) const override;
-        };
+class Smithy : public Card {
+ public:
+  Smithy() : Card{{CardType::Action}, 4, "Smithy"} {}
+  Coroutine Play(DominionState &state) const override;
+};
 
-        class Festival : public Card
-        {
-        public:
-            Festival() : Card{{CardType::Action}, 5, "Festival"} {}
-            Coroutine Play(DominionState &state) const override;
-        };
+class Market : public Card {
+ public:
+  Market() : Card{{CardType::Action}, 5, "Market"} {}
+  Coroutine Play(DominionState &state) const override;
+};
 
-        class Laboratory : public Card
-        {
-        public:
-            Laboratory() : Card{{CardType::Action}, 5, "Laboratory"} {}
-            Coroutine Play(DominionState &state) const override;
-        };
+class Festival : public Card {
+ public:
+  Festival() : Card{{CardType::Action}, 5, "Festival"} {}
+  Coroutine Play(DominionState &state) const override;
+};
 
-        class CouncilRoom : public Card
-        {
-        public:
-            CouncilRoom() : Card{{CardType::Action}, 5, "Council Room"} {}
-            Coroutine Play(DominionState &state) const override;
-        };
+class Laboratory : public Card {
+ public:
+  Laboratory() : Card{{CardType::Action}, 5, "Laboratory"} {}
+  Coroutine Play(DominionState &state) const override;
+};
 
-        class Workshop : public Card
-        {
-        public:
-            Workshop() : Card{{CardType::Action}, 3, "Workshop"} {}
-            Coroutine Play(DominionState &state) const override;
-        };
+class CouncilRoom : public Card {
+ public:
+  CouncilRoom() : Card{{CardType::Action}, 5, "Council Room"} {}
+  Coroutine Play(DominionState &state) const override;
+};
 
-        class BasicTreasure : public Card
-        {
-        public:
-            BasicTreasure(int cost, int value, const std::string &name)
-                : Card{{CardType::Treasure}, cost, name}, value{value} {}
-            Coroutine Play(DominionState &state) const override;
+class Workshop : public Card {
+ public:
+  Workshop() : Card{{CardType::Action}, 3, "Workshop"} {}
+  Coroutine Play(DominionState &state) const override;
+};
 
-        private:
-            int value;
-        };
+class BasicTreasure : public Card {
+ public:
+  BasicTreasure(int cost, int value, const std::string &name)
+      : Card{{CardType::Treasure}, cost, name}, value{value} {}
+  Coroutine Play(DominionState &state) const override;
 
-        class Copper : public BasicTreasure
-        {
-        public:
-            Copper() : BasicTreasure{0, 1, "Copper"} {}
-        };
+ private:
+  int value;
+};
 
-        class Silver : public BasicTreasure
-        {
-        public:
-            Silver() : BasicTreasure{3, 2, "Silver"} {}
-        };
+class Copper : public BasicTreasure {
+ public:
+  Copper() : BasicTreasure{0, 1, "Copper"} {}
+};
 
-        class Gold : public BasicTreasure
-        {
-        public:
-            Gold() : BasicTreasure{6, 3, "Gold"} {}
-        };
+class Silver : public BasicTreasure {
+ public:
+  Silver() : BasicTreasure{3, 2, "Silver"} {}
+};
 
-        class BasicVictory : public Card
-        {
-        public:
-            BasicVictory(int cost, int vp, const std::string &name)
-                : Card{{CardType::Victory}, cost, name, vp} {}
-        };
+class Gold : public BasicTreasure {
+ public:
+  Gold() : BasicTreasure{6, 3, "Gold"} {}
+};
 
-        class Estate : public BasicVictory
-        {
-        public:
-            Estate() : BasicVictory{2, 1, "Estate"} {}
-        };
+class BasicVictory : public Card {
+ public:
+  BasicVictory(int cost, int vp, const std::string &name)
+      : Card{{CardType::Victory}, cost, name, vp} {}
+};
 
-        class Duchy : public BasicVictory
-        {
-        public:
-            Duchy() : BasicVictory{5, 3, "Duchy"} {}
-        };
+class Estate : public BasicVictory {
+ public:
+  Estate() : BasicVictory{2, 1, "Estate"} {}
+};
 
-        class Province : public BasicVictory
-        {
-        public:
-            Province() : BasicVictory{8, 6, "Province"} {}
-        };
-    } // namespace dominion
-} // namespace open_spiel
+class Duchy : public BasicVictory {
+ public:
+  Duchy() : BasicVictory{5, 3, "Duchy"} {}
+};
+
+class Province : public BasicVictory {
+ public:
+  Province() : BasicVictory{8, 6, "Province"} {}
+};
+}  // namespace dominion
+}  // namespace open_spiel

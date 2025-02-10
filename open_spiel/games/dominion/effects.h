@@ -1,55 +1,48 @@
 #pragma once
 
-#include "open_spiel/spiel.h"
-
 #include <coroutine>
 
-namespace open_spiel
-{
-    namespace dominion
-    {
+#include "open_spiel/spiel.h"
 
-        class DominionState; // Forward declaration
-        class PlayerState;   // Forward declaration
+namespace open_spiel {
+namespace dominion {
 
-        struct Promise;
+class DominionState;  // Forward declaration
+class PlayerState;    // Forward declaration
 
-        // template <typename T = void>
-        struct Coroutine : std::coroutine_handle<Promise>
-        {
-            using promise_type = Promise;
+struct Promise;
 
-            bool await_ready() const noexcept { return false; }
-            void await_suspend(std::coroutine_handle<Promise> handle);
-            void await_resume() {};
-        };
+// template <typename T = void>
+struct Coroutine : std::coroutine_handle<Promise> {
+  using promise_type = Promise;
 
-        struct Promise
-        {
-            std::coroutine_handle<> continuation_;
+  bool await_ready() const noexcept { return false; }
+  void await_suspend(std::coroutine_handle<Promise> handle);
+  void await_resume() {};
+};
 
-            Coroutine get_return_object() { return {Coroutine::from_promise(*this)}; }
-            std::suspend_never initial_suspend() { return {}; }
-            std::suspend_always final_suspend() noexcept
-            {
-                if (continuation_)
-                {
-                    continuation_.resume();
-                }
-                return {};
-            }
-            void return_void() {}
-            void unhandled_exception() {}
-        };
+struct Promise {
+  std::coroutine_handle<> continuation_;
 
-        struct ActionAwaiter
-        {
-            DominionState &state;
+  Coroutine get_return_object() { return {Coroutine::from_promise(*this)}; }
+  std::suspend_never initial_suspend() { return {}; }
+  std::suspend_always final_suspend() noexcept {
+    if (continuation_) {
+      continuation_.resume();
+    }
+    return {};
+  }
+  void return_void() {}
+  void unhandled_exception() {}
+};
 
-            bool await_ready() const noexcept { return false; }
-            void await_suspend(std::coroutine_handle<> handle);
-            Action await_resume();
-        };
+struct ActionAwaiter {
+  DominionState &state;
 
-    } // namespace dominion
-} // namespace open_spiel
+  bool await_ready() const noexcept { return false; }
+  void await_suspend(std::coroutine_handle<> handle);
+  Action await_resume();
+};
+
+}  // namespace dominion
+}  // namespace open_spiel
