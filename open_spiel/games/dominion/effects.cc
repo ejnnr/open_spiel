@@ -17,5 +17,10 @@ namespace open_spiel
         {
             this->promise().continuation_ = handle;
         }
+
+        Action ActionAwaiter::await_resume()
+        {
+            return state.pending_action.value();
+        }
     }
 }

@@ -120,6 +120,9 @@ namespace open_spiel
       int turn;
       Player cur_player_; // Player whose turn it is.
       std::optional<std::coroutine_handle<>> continuation_;
+      std::optional<std::vector<Action>> pending_legal_actions;
+      bool pending_shuffle;
+      std::optional<Action> pending_action;
       mutable std::mt19937 rng_; // Random number generator
 
     protected:

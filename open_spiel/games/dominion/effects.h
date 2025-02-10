@@ -1,5 +1,7 @@
 #pragma once
 
+#include "open_spiel/spiel.h"
+
 #include <coroutine>
 
 namespace open_spiel
@@ -46,7 +48,7 @@ namespace open_spiel
 
             bool await_ready() const noexcept { return false; }
             void await_suspend(std::coroutine_handle<> handle);
-            void await_resume() {};
+            Action await_resume();
         };
 
     } // namespace dominion

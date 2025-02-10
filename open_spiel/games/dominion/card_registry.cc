@@ -37,6 +37,7 @@ namespace open_spiel
                 // registry_vector.push_back(std::make_unique<Festival>());
                 // registry_vector.push_back(std::make_unique<Laboratory>());
                 registry_vector.push_back(std::make_unique<CouncilRoom>());
+                registry_vector.push_back(std::make_unique<Workshop>());
 
                 for (size_t i = 0; i < registry_vector.size(); ++i)
                 {

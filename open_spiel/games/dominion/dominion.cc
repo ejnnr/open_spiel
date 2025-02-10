@@ -80,6 +80,9 @@ namespace open_spiel
           n_coins(0),
           turn(0),
           continuation_(std::nullopt),
+          pending_legal_actions(std::nullopt),
+          pending_shuffle(false),
+          pending_action(std::nullopt),
           rng_(std::random_device{}())
     {
     }
@@ -105,7 +108,7 @@ namespace open_spiel
 
     int DominionState::CurrentPlayer() const
     {
-      if (continuation_)
+      if (pending_shuffle)
       {
         return kChancePlayerId;
       }
@@ -121,20 +124,16 @@ namespace open_spiel
 
     void DominionState::DoApplyAction(Action action_id)
     {
-      // if (pending_shuffle_)
-      // {
-      //   std::shuffle(CurrentDeck().begin(), CurrentDeck().end(), rng_);
-      //   pending_shuffle_->resume();
-      //   pending_shuffle_ = std::nullopt;
-      //   return;
-      // }
+      pending_legal_actions.reset();
       if (continuation_)
       {
         auto continuation_copy = continuation_;
         // Important that we reset continuation_ before resuming rather than after,
         // since resuming may itself set a new continuation_.
-        continuation_ = std::nullopt;
+        continuation_.reset();
+        pending_action = action_id;
         continuation_copy->resume();
+        pending_action.reset();
         return;
       }
 
@@ -177,9 +176,9 @@ namespace open_spiel
       if (IsTerminal())
         return {};
 
-      if (IsChanceNode())
+      if (continuation_)
       {
-        return {0};
+        return pending_legal_actions.value();
       }
 
       std::vector<Action> actions;
@@ -296,7 +295,10 @@ namespace open_spiel
       {
         if (player.deck.empty() && !player.discard.empty())
         {
+          pending_legal_actions = {0};
+          pending_shuffle = true;
           co_await ActionAwaiter{*this};
+          pending_shuffle = false;
           std::swap(player.deck, player.discard);
           std::shuffle(player.deck.begin(), player.deck.end(), rng_);
         }

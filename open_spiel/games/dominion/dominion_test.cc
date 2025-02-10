@@ -204,6 +204,50 @@ namespace open_spiel
         SPIEL_CHECK_EQ(dominion_state->n_buys, 2);
       }
 
+      void WorkshopTests()
+      {
+        GameParameters params;
+        std::shared_ptr<const Game> game = LoadGame("dominion", params);
+        std::unique_ptr<State> state = game->NewInitialState();
+        DominionState *dominion_state = static_cast<DominionState *>(state.get());
+
+        // Set up initial state
+        dominion_state->players[0].hand.clear();
+        dominion_state->players[0].hand.push_back(card_registry::get("Workshop"));
+        dominion_state->players[0].deck.clear();
+        dominion_state->players[0].discard.clear();
+
+        // Play Workshop (index 0 in hand)
+        dominion_state->PlayCard(0);
+
+        // Should be in choice state with legal actions for cards costing 4 or less
+        SPIEL_CHECK_FALSE(dominion_state->IsChanceNode());
+        SPIEL_CHECK_EQ(dominion_state->CurrentPlayer(), 0);
+        std::vector<Action> legal_actions = dominion_state->LegalActions();
+        // Should at least be copper, silver, estate, workshop
+        SPIEL_CHECK_GE(legal_actions.size(), 4);
+        for (Action action : legal_actions)
+        {
+          DominionAction choice = DominionAction::FromAction(action);
+          SPIEL_CHECK_EQ(choice.type, DominionAction::Type::kSelectSupplyCard);
+          SPIEL_CHECK_LE(card_registry::get(choice.index)->cost, 4);
+        }
+
+        // Choose to gain a Silver (costs 3)
+        Action gain_silver = DominionAction(
+                                 DominionAction::Type::kSelectSupplyCard,
+                                 card_registry::get_id("Silver"))
+                                 .ToAction();
+        dominion_state->ApplyAction(gain_silver);
+
+        // Verify Silver was gained to discard
+        SPIEL_CHECK_EQ(dominion_state->players[0].discard.size(), 1);
+        SPIEL_CHECK_EQ(dominion_state->players[0].discard[0]->name, "Silver");
+        // Verify Workshop is in playing area
+        SPIEL_CHECK_EQ(dominion_state->players[0].playing_area.size(), 1);
+        SPIEL_CHECK_EQ(dominion_state->players[0].playing_area[0]->name, "Workshop");
+      }
+
       void GameOverTests()
       {
         card_registry::init();
@@ -253,6 +297,7 @@ int main(int argc, char **argv)
   open_spiel::dominion::GameStateTests();
   open_spiel::dominion::SmithyTests();
   open_spiel::dominion::CouncilRoomTests();
+  open_spiel::dominion::WorkshopTests();
   open_spiel::dominion::GameOverTests();
   open_spiel::dominion::BasicDominionTests();
 }

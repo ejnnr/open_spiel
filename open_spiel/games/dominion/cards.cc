@@ -1,5 +1,6 @@
 #include "open_spiel/games/dominion/cards.h"
 #include "open_spiel/games/dominion/dominion.h"
+#include "open_spiel/games/dominion/card_registry.h"
 
 namespace open_spiel
 {
@@ -81,6 +82,27 @@ namespace open_spiel
 
         Coroutine Workshop::Play(DominionState &state) const
         {
+            state.pending_legal_actions = std::vector<Action>();
+            for (size_t i = 0; i < state.supply_counts.size(); ++i)
+            {
+                if (state.supply_counts[i] > 0 && card_registry::get(i)->cost <= 4)
+                {
+                    state.pending_legal_actions->push_back(DominionAction(DominionAction::Type::kSelectSupplyCard, i).ToAction());
+                }
+            }
+            if (state.pending_legal_actions->empty())
+                co_return;
+
+            Action action = co_await ActionAwaiter{state};
+            DominionAction choice = DominionAction::FromAction(action);
+            SPIEL_CHECK_EQ(choice.type, DominionAction::Type::kSelectSupplyCard);
+            SPIEL_CHECK_GE(choice.index, 0);
+            SPIEL_CHECK_LT(choice.index, state.supply_counts.size());
+            if (state.supply_counts[choice.index] > 0)
+            {
+                state.supply_counts[choice.index] -= 1;
+                state.players[state.cur_player_].discard.push_back(card_registry::get(choice.index));
+            }
             co_return;
         }
     } // namespace dominion
