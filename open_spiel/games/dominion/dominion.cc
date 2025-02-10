@@ -174,6 +174,11 @@ namespace open_spiel
       if (IsTerminal())
         return {};
 
+      if (IsChanceNode())
+      {
+        return {0};
+      }
+
       std::vector<Action> actions;
 
       if (phase == Phase::Action)
@@ -252,6 +257,11 @@ namespace open_spiel
     std::unique_ptr<State> DominionState::Clone() const
     {
       return std::unique_ptr<State>(new DominionState(*this));
+    }
+
+    ActionsAndProbs DominionState::ChanceOutcomes() const
+    {
+      return {{0, 1.0}};
     }
 
     PlayerState &DominionState::CurrentPlayerState()
@@ -399,7 +409,7 @@ namespace open_spiel
                               player.hand.end());
         player.hand.clear();
         // Draw next hand
-        co_await DrawCardForPlayer(5, cur_player_);
+        DrawCardForPlayer(5, cur_player_);
 
         // next player
         cur_player_ = (cur_player_ + 1) % num_players_;
@@ -412,7 +422,7 @@ namespace open_spiel
     std::string DominionState::ToString() const
     {
       std::stringstream ss;
-      ss << "Player " << cur_player_ << ", " << phase << " phase"
+      ss << "Turn " << turn << ", " << "Player " << cur_player_ << ", " << phase << " phase"
          << ", " << n_actions << " actions, " << n_buys << " buys, " << n_coins
          << " coins" << std::endl;
       ss << "Supply: ";
@@ -598,6 +608,23 @@ namespace open_spiel
       }
 
       return state;
+    }
+
+    std::string DominionGame::GetRNGState() const
+    {
+      // std::ostringstream rng_stream;
+      // rng_stream << rng_;
+      // return rng_stream.str();
+      return "";
+    }
+
+    void DominionGame::SetRNGState(const std::string &rng_state) const
+    {
+      // if (rng_state.empty())
+      //   return;
+      // std::istringstream rng_stream(rng_state);
+      // rng_stream >> rng_;
+      return;
     }
 
   } // namespace dominion

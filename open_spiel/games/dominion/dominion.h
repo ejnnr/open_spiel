@@ -85,14 +85,13 @@ namespace open_spiel
       std::string InformationStateString(Player player) const override;
       std::unique_ptr<State> Clone() const override;
       std::vector<Action> LegalActions() const override;
-
-      // Serialization methods
+      ActionsAndProbs ChanceOutcomes() const override;
       std::string Serialize() const override;
 
       // Dominion-specific helper functions
       void PlayCard(size_t hand_index);
       Coroutine DrawCardForPlayer(int n, Player player_id);
-      Coroutine DrawCard(int n) { return DrawCardForPlayer(n, CurrentPlayer()); };
+      Coroutine DrawCard(int n) { return DrawCardForPlayer(n, cur_player_); };
       void Buy(size_t card_index);
       Coroutine NextPhase();
       void ResetCounters();
@@ -121,7 +120,7 @@ namespace open_spiel
       int turn;
       Player cur_player_; // Player whose turn it is.
       std::optional<std::coroutine_handle<>> continuation_;
-      std::mt19937 rng_; // Random number generator
+      mutable std::mt19937 rng_; // Random number generator
 
     protected:
       void DoApplyAction(Action action_id) override;
@@ -140,7 +139,10 @@ namespace open_spiel
       double MaxUtility() const override { return 1; }
       absl::optional<double> UtilitySum() const override { return 0; }
       int MaxGameLength() const override;
+      int MaxChanceOutcomes() const override { return 1; }
       std::unique_ptr<State> DeserializeState(const std::string &str) const override;
+      std::string GetRNGState() const override;
+      void SetRNGState(const std::string &rng_state) const override;
 
     private:
       // Number of players.

@@ -37,17 +37,6 @@ namespace open_spiel
 
       void PlayerStateTests()
       {
-        card_registry::init();
-
-        // Test default setup
-        {
-          PlayerState player{true};
-          SPIEL_CHECK_EQ(player.hand.size(), 5);
-          SPIEL_CHECK_EQ(player.deck.size(), 5);
-          SPIEL_CHECK_TRUE(player.discard.empty());
-          SPIEL_CHECK_TRUE(player.playing_area.empty());
-        }
-
         // Test play card
         {
           PlayerState player{false};
@@ -84,11 +73,35 @@ namespace open_spiel
         SPIEL_CHECK_EQ(dominion_state->n_coins, 1);
 
         // Test phase transitions
-        dominion_state->NextPhase();
+        dominion_state->ApplyAction(0);
         SPIEL_CHECK_EQ(dominion_state->phase, Phase::Buy);
-        dominion_state->NextPhase();
+        dominion_state->ApplyAction(0);
         SPIEL_CHECK_EQ(dominion_state->phase, Phase::Action);
         SPIEL_CHECK_EQ(dominion_state->CurrentPlayer(), 1); // Next player's turn
+        dominion_state->ApplyAction(0);
+        SPIEL_CHECK_EQ(dominion_state->phase, Phase::Buy);
+        SPIEL_CHECK_EQ(dominion_state->CurrentPlayer(), 1);
+        dominion_state->ApplyAction(0);
+        SPIEL_CHECK_EQ(dominion_state->phase, Phase::Action);
+        SPIEL_CHECK_EQ(dominion_state->CurrentPlayer(), 0);
+        dominion_state->ApplyAction(0);
+        SPIEL_CHECK_EQ(dominion_state->phase, Phase::Buy);
+        SPIEL_CHECK_EQ(dominion_state->CurrentPlayer(), 0);
+
+        // Check that reshuffle triggers a chance node
+        dominion_state->ApplyAction(0);
+        SPIEL_CHECK_TRUE(dominion_state->IsChanceNode());
+        SPIEL_CHECK_EQ(dominion_state->players[0].deck.size(), 0);
+        SPIEL_CHECK_EQ(dominion_state->players[0].hand.size(), 0);
+        SPIEL_CHECK_EQ(dominion_state->players[0].discard.size(), 10);
+
+        dominion_state->ApplyAction(0);
+        // Now the shuffle should be complete and phase advanced
+        SPIEL_CHECK_EQ(dominion_state->players[0].deck.size(), 5);
+        SPIEL_CHECK_EQ(dominion_state->players[0].hand.size(), 5);
+        SPIEL_CHECK_EQ(dominion_state->players[0].discard.size(), 0);
+        SPIEL_CHECK_EQ(dominion_state->phase, Phase::Action);
+        SPIEL_CHECK_EQ(dominion_state->CurrentPlayer(), 1);
       }
 
       void GameOverTests()

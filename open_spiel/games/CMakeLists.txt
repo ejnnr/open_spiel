@@ -65,6 +65,8 @@ set(GAME_SOURCES
   dominion/card_registry.h
   dominion/cards.cc
   dominion/cards.h
+  dominion/effects.cc
+  dominion/effects.h
   dots_and_boxes/dots_and_boxes.cc
   dots_and_boxes/dots_and_boxes.h
   dynamic_routing/dynamic_routing_data.cc
