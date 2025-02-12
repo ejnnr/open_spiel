@@ -33,7 +33,7 @@ constexpr int kDefaultPlayers = 2;
 const GameType kGameType{/*short_name=*/"dominion",
                          /*long_name=*/"Dominion",
                          GameType::Dynamics::kSequential,
-                         GameType::ChanceMode::kSampledStochastic,
+                         GameType::ChanceMode::kExplicitStochastic,
                          GameType::Information::kImperfectInformation,
                          // TODO: only the two-player version is zero sum
                          GameType::Utility::kZeroSum,
@@ -76,12 +76,15 @@ DominionState::DominionState(std::shared_ptr<const Game> game)
       turn(0),
       continuation_(std::nullopt),
       pending_legal_actions(std::nullopt),
-      pending_shuffle(false),
+      pending_draw(false),
       pending_action(std::nullopt),
       rng_(std::random_device{}()) {}
 
 std::string DominionState::ActionToString(Player player,
                                           Action action_id) const {
+  if (player == kChancePlayerId) {
+    return "Draw card " + std::to_string(action_id);
+  }
   DominionAction action = DominionAction::FromAction(action_id);
   switch (action.type) {
     case DominionAction::Type::kEnd:
@@ -99,7 +102,7 @@ std::string DominionState::ActionToString(Player player,
 }
 
 int DominionState::CurrentPlayer() const {
-  if (pending_shuffle) {
+  if (pending_draw) {
     return kChancePlayerId;
   } else if (IsTerminal()) {
     return kTerminalPlayerId;
@@ -223,7 +226,30 @@ std::unique_ptr<State> DominionState::Clone() const {
   return std::unique_ptr<State>(new DominionState(*this));
 }
 
-ActionsAndProbs DominionState::ChanceOutcomes() const { return {{0, 1.0}}; }
+ActionsAndProbs DominionState::ChanceOutcomes() const {
+  SPIEL_CHECK_TRUE(pending_legal_actions.has_value());
+  SPIEL_CHECK_GT(pending_legal_actions->size(), 0);
+  ActionsAndProbs outcomes;
+  outcomes.reserve(pending_legal_actions->size());
+  double prob = 1.0 / pending_legal_actions->size();
+  for (Action action : *pending_legal_actions) {
+    outcomes.push_back({action, prob});
+  }
+  return outcomes;
+}
+
+std::vector<Action> DominionState::LegalChanceOutcomes() const {
+  SPIEL_CHECK_TRUE(pending_legal_actions.has_value());
+  SPIEL_CHECK_GT(pending_legal_actions->size(), 0);
+  return *pending_legal_actions;
+}
+
+void DominionState::SampleAllChanceNodes() {
+  while (IsChanceNode()) {
+    auto action = SampleAction(ChanceOutcomes(), rng_).first;
+    ApplyAction(action);
+  }
+}
 
 PlayerState &DominionState::CurrentPlayerState() {
   return players[cur_player_];
@@ -247,17 +273,35 @@ Coroutine DominionState::DrawCardForPlayer(int n, Player player_id) {
   PlayerState &player = players[player_id];
   for (int i = 0; i < n; ++i) {
     if (player.deck.empty() && !player.discard.empty()) {
-      pending_legal_actions = {0};
-      pending_shuffle = true;
-      co_await ActionAwaiter{*this};
-      pending_shuffle = false;
       std::swap(player.deck, player.discard);
-      std::shuffle(player.deck.begin(), player.deck.end(), rng_);
     }
     if (!player.deck.empty()) {
+      // Draw a random card. This creates a chance node, so need to await an
+      // action before actually drawing the card.
+      // The legal actions are the indices of the cards in the deck.
+      pending_legal_actions = std::vector<Action>(player.deck.size());
+      std::iota(pending_legal_actions->begin(), pending_legal_actions->end(),
+                0);
+      pending_draw = true;
+      auto action = co_await ActionAwaiter{*this};
+      pending_draw = false;
+      SPIEL_CHECK_GE(action, 0);
+      SPIEL_CHECK_LT(action, player.deck.size());
+
+      // Draw the card
+      if (action != player.deck.size() - 1) {
+        std::swap(player.deck[action], player.deck.back());
+      }
       player.hand.push_back(player.deck.back());
       player.deck.pop_back();
     }
+  }
+  co_return;
+}
+
+Coroutine DominionState::DrawHandForAllPlayers() {
+  for (Player player_id = 0; player_id < num_players_; ++player_id) {
+    co_await DrawCardForPlayer(5, player_id);
   }
   co_return;
 }
@@ -410,8 +454,12 @@ std::unique_ptr<State> DominionGame::NewInitialState() const {
   state->players.reserve(num_players_);
   for (int i = 0; i < num_players_; ++i) {
     state->players.push_back(PlayerState{true});
-    state->DrawCardForPlayer(5, i);
   }
+  // We can't just loop over all players and draw a hand for each; this would
+  // create a coroutine for each player, and continuation_ would be overriden to
+  // the one for the last player. This helper coroutine that draws for all
+  // players lets us keep to a single continuation_.
+  state->DrawHandForAllPlayers();
 
   return state;
 }

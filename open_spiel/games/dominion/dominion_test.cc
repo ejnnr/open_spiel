@@ -53,6 +53,22 @@ void GameStateTests() {
   SPIEL_CHECK_EQ(dominion_state->n_buys, 1);
   SPIEL_CHECK_EQ(dominion_state->n_coins, 0);
 
+  // Check that drawing a card triggers a chance node
+  SPIEL_CHECK_TRUE(dominion_state->IsChanceNode());
+  SPIEL_CHECK_EQ(dominion_state->players[0].deck.size(), 10);
+  SPIEL_CHECK_EQ(dominion_state->players[0].hand.size(), 0);
+  SPIEL_CHECK_EQ(dominion_state->players[0].discard.size(), 0);
+  dominion_state->ApplyAction(0);
+  SPIEL_CHECK_EQ(dominion_state->players[0].deck.size(), 9);
+  SPIEL_CHECK_EQ(dominion_state->players[0].hand.size(), 1);
+  SPIEL_CHECK_EQ(dominion_state->players[0].discard.size(), 0);
+  SPIEL_CHECK_TRUE(dominion_state->IsChanceNode());
+  dominion_state->SampleAllChanceNodes();
+  SPIEL_CHECK_EQ(dominion_state->players[0].deck.size(), 5);
+  SPIEL_CHECK_EQ(dominion_state->players[0].hand.size(), 5);
+  SPIEL_CHECK_EQ(dominion_state->players[0].discard.size(), 0);
+  SPIEL_CHECK_FALSE(dominion_state->IsChanceNode());
+
   // Test playing a Copper
   auto &hand = dominion_state->CurrentHand();
   auto copper_it = std::find_if(hand.begin(), hand.end(), [](const Card *card) {
@@ -67,32 +83,21 @@ void GameStateTests() {
   dominion_state->ApplyAction(0);
   SPIEL_CHECK_EQ(dominion_state->phase, Phase::Buy);
   dominion_state->ApplyAction(0);
+  dominion_state->SampleAllChanceNodes();
+
   SPIEL_CHECK_EQ(dominion_state->phase, Phase::Action);
   SPIEL_CHECK_EQ(dominion_state->CurrentPlayer(), 1);  // Next player's turn
   dominion_state->ApplyAction(0);
   SPIEL_CHECK_EQ(dominion_state->phase, Phase::Buy);
   SPIEL_CHECK_EQ(dominion_state->CurrentPlayer(), 1);
   dominion_state->ApplyAction(0);
+  dominion_state->SampleAllChanceNodes();
+
   SPIEL_CHECK_EQ(dominion_state->phase, Phase::Action);
   SPIEL_CHECK_EQ(dominion_state->CurrentPlayer(), 0);
   dominion_state->ApplyAction(0);
   SPIEL_CHECK_EQ(dominion_state->phase, Phase::Buy);
   SPIEL_CHECK_EQ(dominion_state->CurrentPlayer(), 0);
-
-  // Check that reshuffle triggers a chance node
-  dominion_state->ApplyAction(0);
-  SPIEL_CHECK_TRUE(dominion_state->IsChanceNode());
-  SPIEL_CHECK_EQ(dominion_state->players[0].deck.size(), 0);
-  SPIEL_CHECK_EQ(dominion_state->players[0].hand.size(), 0);
-  SPIEL_CHECK_EQ(dominion_state->players[0].discard.size(), 10);
-
-  dominion_state->ApplyAction(0);
-  // Now the shuffle should be complete and phase advanced
-  SPIEL_CHECK_EQ(dominion_state->players[0].deck.size(), 5);
-  SPIEL_CHECK_EQ(dominion_state->players[0].hand.size(), 5);
-  SPIEL_CHECK_EQ(dominion_state->players[0].discard.size(), 0);
-  SPIEL_CHECK_EQ(dominion_state->phase, Phase::Action);
-  SPIEL_CHECK_EQ(dominion_state->CurrentPlayer(), 1);
 }
 
 void SmithyTests() {
@@ -101,32 +106,34 @@ void SmithyTests() {
   std::unique_ptr<State> state = game->NewInitialState();
   DominionState *dominion_state = static_cast<DominionState *>(state.get());
 
-  // Set up a specific state where player has Smithy and 1 card in deck
+  dominion_state->SampleAllChanceNodes();
   dominion_state->players[0].hand.clear();
   dominion_state->players[0].deck.clear();
   dominion_state->players[0].discard.clear();
 
-  // Add Smithy to hand
   dominion_state->players[0].hand.push_back(card_registry::get("Smithy"));
-  // Add one Copper to deck
   dominion_state->players[0].deck.push_back(card_registry::get("Copper"));
-  // Add two Silvers to discard
   dominion_state->players[0].discard.push_back(card_registry::get("Silver"));
   dominion_state->players[0].discard.push_back(card_registry::get("Silver"));
 
   // Play Smithy (index 0 in hand)
   dominion_state->PlayCard(0);
+  SPIEL_CHECK_EQ(dominion_state->n_actions, 0);
+  SPIEL_CHECK_TRUE(dominion_state->IsChanceNode());
+  SPIEL_CHECK_EQ(dominion_state->players[0].hand.size(), 0);
+  dominion_state->ApplyAction(0);
   // First card should be drawn from deck
+  SPIEL_CHECK_TRUE(dominion_state->IsChanceNode());
   SPIEL_CHECK_EQ(dominion_state->players[0].hand.size(), 1);
   SPIEL_CHECK_EQ(dominion_state->players[0].hand[0]->name, "Copper");
-  // And we haven't shuffled yet
-  SPIEL_CHECK_EQ(dominion_state->players[0].deck.size(), 0);
-  SPIEL_CHECK_EQ(dominion_state->players[0].discard.size(), 2);
-  SPIEL_CHECK_TRUE(dominion_state->IsChanceNode());
+  // We've shuffled but haven't drawn yet
+  SPIEL_CHECK_EQ(dominion_state->players[0].deck.size(), 2);
+  SPIEL_CHECK_EQ(dominion_state->players[0].discard.size(), 0);
 
-  // Apply action to handle shuffle
+  // Apply action to draw next cards
   dominion_state->ApplyAction(0);
-  // After shuffle and drawing remaining 2 cards
+  dominion_state->ApplyAction(0);
+  SPIEL_CHECK_FALSE(dominion_state->IsChanceNode());
   SPIEL_CHECK_EQ(dominion_state->players[0].hand.size(), 3);
   SPIEL_CHECK_EQ(dominion_state->players[0].deck.size(), 0);
   SPIEL_CHECK_EQ(dominion_state->players[0].discard.size(), 0);
@@ -142,6 +149,7 @@ void CouncilRoomTests() {
   DominionState *dominion_state = static_cast<DominionState *>(state.get());
 
   // Set up specific states for both players
+  dominion_state->SampleAllChanceNodes();
   // Player 0 (active player):
   dominion_state->players[0].hand.clear();
   dominion_state->players[0].deck.clear();
@@ -164,33 +172,37 @@ void CouncilRoomTests() {
 
   // Play Council Room (index 0 in hand)
   dominion_state->PlayCard(0);
-
-  // Check initial state after first draw but before shuffle
-  SPIEL_CHECK_EQ(dominion_state->players[0].hand.size(), 1);
-  SPIEL_CHECK_EQ(dominion_state->players[0].hand[0]->name, "Copper");
-  SPIEL_CHECK_EQ(dominion_state->players[0].deck.size(), 0);
-  SPIEL_CHECK_EQ(dominion_state->players[0].discard.size(), 3);
-  // Player 1 shouldn't have drawn yet
-  SPIEL_CHECK_EQ(dominion_state->players[1].hand.size(), 0);
   SPIEL_CHECK_TRUE(dominion_state->IsChanceNode());
 
-  // Apply action to handle player 0's shuffle
+  // Check state after first draw
   dominion_state->ApplyAction(0);
-  // After shuffle and drawing remaining 3 cards for player 0
+  SPIEL_CHECK_TRUE(dominion_state->IsChanceNode());
+  SPIEL_CHECK_EQ(dominion_state->players[0].hand.size(), 1);
+  SPIEL_CHECK_EQ(dominion_state->players[0].hand[0]->name, "Copper");
+  SPIEL_CHECK_EQ(dominion_state->players[0].deck.size(), 3);
+  SPIEL_CHECK_EQ(dominion_state->players[0].discard.size(), 0);
+  // Player 1 shouldn't have drawn yet
+  SPIEL_CHECK_EQ(dominion_state->players[1].hand.size(), 0);
+
+  // Draw remaining 3 cards
+  dominion_state->ApplyAction(0);
+  dominion_state->ApplyAction(0);
+  dominion_state->ApplyAction(0);
   SPIEL_CHECK_EQ(dominion_state->players[0].hand.size(), 4);
   SPIEL_CHECK_EQ(dominion_state->players[0].deck.size(), 0);
   SPIEL_CHECK_EQ(dominion_state->players[0].discard.size(), 0);
-  // Player 1 still shouldn't have drawn, we only did player 0's shuffle
-  SPIEL_CHECK_EQ(dominion_state->players[1].hand.size(), 0);
+  // Player 1 still shouldn't have drawn
   SPIEL_CHECK_TRUE(dominion_state->IsChanceNode());
+  SPIEL_CHECK_EQ(dominion_state->players[1].hand.size(), 0);
 
-  // Apply action to handle player 1's shuffle
+  // Apply action to handle player 1's draw
   dominion_state->ApplyAction(0);
   // Player 1 should now have drawn from their shuffled discard
   SPIEL_CHECK_EQ(dominion_state->players[1].hand.size(), 1);
   SPIEL_CHECK_EQ(dominion_state->players[1].hand[0]->name, "Duchy");
   SPIEL_CHECK_EQ(dominion_state->players[1].deck.size(), 0);
   SPIEL_CHECK_EQ(dominion_state->players[1].discard.size(), 0);
+  SPIEL_CHECK_FALSE(dominion_state->IsChanceNode());
   // Verify Council Room is in playing area
   SPIEL_CHECK_EQ(dominion_state->players[0].playing_area.size(), 1);
   SPIEL_CHECK_EQ(dominion_state->players[0].playing_area[0]->name,
@@ -206,6 +218,7 @@ void WorkshopTests() {
   DominionState *dominion_state = static_cast<DominionState *>(state.get());
 
   // Set up initial state
+  dominion_state->SampleAllChanceNodes();
   dominion_state->players[0].hand.clear();
   dominion_state->players[0].hand.push_back(card_registry::get("Workshop"));
   dominion_state->players[0].deck.clear();

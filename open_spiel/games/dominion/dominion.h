@@ -77,9 +77,10 @@ class DominionState : public State {
   std::unique_ptr<State> Clone() const override;
   std::vector<Action> LegalActions() const override;
   ActionsAndProbs ChanceOutcomes() const override;
+  std::vector<Action> LegalChanceOutcomes() const override;
   std::string Serialize() const override;
 
-  // Dominion-specific helper functions
+  // Additional helper functions
   void PlayCard(size_t hand_index);
   Coroutine DrawCardForPlayer(int n, Player player_id);
   Coroutine DrawCard(int n) { return DrawCardForPlayer(n, cur_player_); };
@@ -87,6 +88,8 @@ class DominionState : public State {
   Coroutine NextPhase();
   void ResetCounters();
   bool IsGameOver() const;
+  void SampleAllChanceNodes();
+  Coroutine DrawHandForAllPlayers();
 
   // Convenience aliases
   std::vector<Card *> &CurrentDeck();
@@ -112,7 +115,7 @@ class DominionState : public State {
   Player cur_player_;  // Player whose turn it is.
   std::optional<std::coroutine_handle<>> continuation_;
   std::optional<std::vector<Action>> pending_legal_actions;
-  bool pending_shuffle;
+  bool pending_draw;
   std::optional<Action> pending_action;
   mutable std::mt19937 rng_;  // Random number generator
 
@@ -132,7 +135,7 @@ class DominionGame : public Game {
   double MaxUtility() const override { return 1; }
   absl::optional<double> UtilitySum() const override { return 0; }
   int MaxGameLength() const override;
-  int MaxChanceOutcomes() const override { return 1; }
+  int MaxChanceOutcomes() const override { return 200; }
   std::unique_ptr<State> DeserializeState(
       const std::string &str) const override;
   std::string GetRNGState() const override;
