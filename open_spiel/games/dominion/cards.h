@@ -90,6 +90,12 @@ class Workshop : public Card {
   Coroutine Play(DominionState &state) const override;
 };
 
+class Chapel : public Card {
+ public:
+  Chapel() : Card{{CardType::Action}, 2, "Chapel"} {}
+  Coroutine Play(DominionState &state) const override;
+};
+
 class BasicTreasure : public Card {
  public:
   BasicTreasure(int cost, int value, const std::string &name)

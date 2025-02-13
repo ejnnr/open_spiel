@@ -253,6 +253,62 @@ void WorkshopTests() {
   SPIEL_CHECK_EQ(dominion_state->players[0].playing_area[0]->name, "Workshop");
 }
 
+void ChapelTests() {
+  GameParameters params;
+  std::shared_ptr<const Game> game = LoadGame("dominion", params);
+  std::unique_ptr<State> state = game->NewInitialState();
+  DominionState *dominion_state = static_cast<DominionState *>(state.get());
+
+  // Set up initial state
+  dominion_state->SampleAllChanceNodes();
+  dominion_state->players[0].hand.clear();
+  dominion_state->players[0].hand.push_back(card_registry::get("Chapel"));
+  dominion_state->players[0].hand.push_back(card_registry::get("Copper"));
+  dominion_state->players[0].hand.push_back(card_registry::get("Estate"));
+  dominion_state->players[0].deck.clear();
+  dominion_state->players[0].discard.clear();
+
+  // Play Chapel (index 0 in hand)
+  dominion_state->PlayCard(0);
+
+  // Should be in choice state with legal actions for each card in hand plus end
+  SPIEL_CHECK_FALSE(dominion_state->IsChanceNode());
+  SPIEL_CHECK_EQ(dominion_state->CurrentPlayer(), 0);
+  std::vector<Action> legal_actions = dominion_state->LegalActions();
+  // Should be 3 actions - trash copper (200), trash estate (201), or end (0)
+  SPIEL_CHECK_EQ(legal_actions.size(), 3);
+  SPIEL_CHECK_EQ(legal_actions[0], 0);
+  SPIEL_CHECK_EQ(legal_actions[1], 200);
+  SPIEL_CHECK_EQ(legal_actions[2], 201);
+
+  // Choose to trash the Copper
+  dominion_state->ApplyAction(200);
+
+  // Verify Copper was trashed
+  SPIEL_CHECK_EQ(dominion_state->trash.size(), 1);
+  SPIEL_CHECK_EQ(dominion_state->trash[0]->name, "Copper");
+  SPIEL_CHECK_EQ(dominion_state->players[0].hand.size(), 1);
+  SPIEL_CHECK_FALSE(dominion_state->IsChanceNode());
+  SPIEL_CHECK_EQ(dominion_state->LegalActions().size(), 2);
+  SPIEL_CHECK_EQ(dominion_state->LegalActions()[0], 0);
+  SPIEL_CHECK_EQ(dominion_state->LegalActions()[1], 200);
+
+  // Choose to trash the Estate
+  dominion_state->ApplyAction(200);
+
+  // Verify Estate was also trashed
+  SPIEL_CHECK_EQ(dominion_state->trash.size(), 2);
+  SPIEL_CHECK_EQ(dominion_state->trash[1]->name, "Estate");
+  SPIEL_CHECK_EQ(dominion_state->players[0].hand.size(), 0);
+  SPIEL_CHECK_FALSE(dominion_state->IsChanceNode());
+  SPIEL_CHECK_EQ(dominion_state->LegalActions().size(), 1);
+  SPIEL_CHECK_EQ(dominion_state->LegalActions()[0], 0);
+
+  // Choose to end (no more cards to trash)
+  dominion_state->ApplyAction(0);
+  SPIEL_CHECK_FALSE(dominion_state->IsChanceNode());
+}
+
 void GameOverTests() {
   card_registry::init();
   GameParameters params;
@@ -297,6 +353,7 @@ int main(int argc, char **argv) {
   open_spiel::dominion::SmithyTests();
   open_spiel::dominion::CouncilRoomTests();
   open_spiel::dominion::WorkshopTests();
+  open_spiel::dominion::ChapelTests();
   open_spiel::dominion::GameOverTests();
   open_spiel::dominion::BasicDominionTests();
 }

@@ -85,6 +85,9 @@ std::string DominionState::ActionToString(Player player,
   if (player == kChancePlayerId) {
     return "Draw card " + std::to_string(action_id);
   }
+  if (continuation_ && action_id != 0 && action_id < 100) {
+    return "Custom action " + std::to_string(action_id);
+  }
   DominionAction action = DominionAction::FromAction(action_id);
   switch (action.type) {
     case DominionAction::Type::kEnd:
@@ -287,7 +290,10 @@ Coroutine DominionState::DrawCardForPlayer(int n, Player player_id) {
       std::iota(pending_legal_actions->begin(), pending_legal_actions->end(),
                 0);
       pending_draw = true;
-      auto action = co_await ActionAwaiter{*this};
+      // TODO: a bit weird that we're passing in pending_legal_actions, which in
+      // this case will just be copied into itself
+      auto action =
+          co_await ActionAwaiter{*this, pending_legal_actions.value()};
       pending_draw = false;
       SPIEL_CHECK_GE(action, 0);
       SPIEL_CHECK_LT(action, player.deck.size());

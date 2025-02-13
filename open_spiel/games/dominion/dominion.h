@@ -22,10 +22,10 @@
 #include <string>
 #include <vector>
 
-#include "effects.h"
+#include "open_spiel/games/dominion/effects.h"
+#include "open_spiel/games/dominion/player_state.h"
 #include "open_spiel/spiel.h"
 #include "open_spiel/spiel_utils.h"
-#include "player_state.h"
 // A simple game that includes chance and imperfect information
 // https://en.wikipedia.org/wiki/Liar%27s_dice
 //

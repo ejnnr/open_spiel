@@ -7,8 +7,9 @@
 
 namespace open_spiel {
 namespace dominion {
-void ActionAwaiter::await_suspend(std::coroutine_handle<> handle) {
+void ActionAwaiterBase::await_suspend(std::coroutine_handle<> handle) {
   state.continuation_ = handle;
+  state.pending_legal_actions = legal_actions;
 }
 
 void Coroutine::await_suspend(std::coroutine_handle<Promise> handle) {
@@ -16,5 +17,20 @@ void Coroutine::await_suspend(std::coroutine_handle<Promise> handle) {
 }
 
 Action ActionAwaiter::await_resume() { return state.pending_action.value(); }
+
+DominionAction DominionActionAwaiter::await_resume() {
+  return DominionAction::FromAction(state.pending_action.value());
+}
+
+ActionAwaiter getAction(DominionState &state,
+                        std::vector<Action> legal_actions) {
+  return ActionAwaiter(state, legal_actions);
+}
+
+DominionActionAwaiter getDominionAction(DominionState &state,
+                                        std::vector<Action> legal_actions) {
+  return DominionActionAwaiter(state, legal_actions);
+}
+
 }  // namespace dominion
 }  // namespace open_spiel

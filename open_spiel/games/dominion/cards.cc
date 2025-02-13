@@ -2,6 +2,7 @@
 
 #include "open_spiel/games/dominion/card_registry.h"
 #include "open_spiel/games/dominion/dominion.h"
+#include "open_spiel/games/dominion/effects.h"
 
 namespace open_spiel {
 namespace dominion {
@@ -69,25 +70,44 @@ Coroutine CouncilRoom::Play(DominionState &state) const {
 }
 
 Coroutine Workshop::Play(DominionState &state) const {
-  state.pending_legal_actions = std::vector<Action>();
+  std::vector<Action> legal_actions;
   for (size_t i = 0; i < state.supply_counts.size(); ++i) {
     if (state.supply_counts[i] > 0 && card_registry::get(i)->cost <= 4) {
-      state.pending_legal_actions->push_back(
+      legal_actions.push_back(
           DominionAction(DominionAction::Type::kSelectSupplyCard, i)
               .ToAction());
     }
   }
-  if (state.pending_legal_actions->empty()) co_return;
+  if (legal_actions.empty()) co_return;
 
-  Action action = co_await ActionAwaiter{state};
-  DominionAction choice = DominionAction::FromAction(action);
-  SPIEL_CHECK_EQ(choice.type, DominionAction::Type::kSelectSupplyCard);
-  SPIEL_CHECK_GE(choice.index, 0);
-  SPIEL_CHECK_LT(choice.index, state.supply_counts.size());
-  if (state.supply_counts[choice.index] > 0) {
-    state.supply_counts[choice.index] -= 1;
+  DominionAction action = co_await getDominionAction(state, legal_actions);
+  SPIEL_CHECK_EQ(action.type, DominionAction::Type::kSelectSupplyCard);
+  SPIEL_CHECK_GE(action.index, 0);
+  SPIEL_CHECK_LT(action.index, state.supply_counts.size());
+  if (state.supply_counts[action.index] > 0) {
+    state.supply_counts[action.index] -= 1;
     state.players[state.cur_player_].discard.push_back(
-        card_registry::get(choice.index));
+        card_registry::get(action.index));
+  }
+  co_return;
+}
+
+Coroutine Chapel::Play(DominionState &state) const {
+  for (int i = 0; i < 4; ++i) {
+    std::vector<Action> hand_choices(state.CurrentHand().size());
+    std::iota(hand_choices.begin(), hand_choices.end(), 0);
+    std::vector<Action> actions;
+    actions.reserve(hand_choices.size() + 1);
+    actions.push_back(0);
+    for (Action hand_choice : hand_choices) {
+      actions.push_back(
+          DominionAction(DominionAction::Type::kSelectHandCard, hand_choice)
+              .ToAction());
+    }
+    DominionAction action = co_await getDominionAction(state, actions);
+    if (action.type == DominionAction::Type::kEnd) break;
+    state.trash.push_back(state.CurrentHand()[action.index]);
+    state.CurrentHand().erase(state.CurrentHand().begin() + action.index);
   }
   co_return;
 }
