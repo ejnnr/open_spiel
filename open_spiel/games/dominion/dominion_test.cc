@@ -337,6 +337,65 @@ void GameOverTests() {
   SPIEL_CHECK_TRUE(dominion_state->IsGameOver());
 }
 
+void CellarTests() {
+  GameParameters params;
+  std::shared_ptr<const Game> game = LoadGame("dominion", params);
+  std::unique_ptr<State> state = game->NewInitialState();
+  DominionState *dominion_state = static_cast<DominionState *>(state.get());
+
+  // Set up initial state
+  dominion_state->SampleAllChanceNodes();
+  dominion_state->players[0].hand.clear();
+  dominion_state->players[0].hand.push_back(card_registry::get("Cellar"));
+  dominion_state->players[0].hand.push_back(card_registry::get("Copper"));
+  dominion_state->players[0].hand.push_back(card_registry::get("Estate"));
+  dominion_state->players[0].deck.clear();
+  dominion_state->players[0].deck.push_back(card_registry::get("Silver"));
+  dominion_state->players[0].deck.push_back(card_registry::get("Gold"));
+  dominion_state->players[0].discard.clear();
+
+  // Play Cellar (index 0 in hand)
+  dominion_state->PlayCard(0);
+  SPIEL_CHECK_EQ(dominion_state->n_actions, 1);  // +1 action
+
+  // Should be in choice state with legal actions for each card in hand plus end
+  SPIEL_CHECK_FALSE(dominion_state->IsChanceNode());
+  SPIEL_CHECK_EQ(dominion_state->CurrentPlayer(), 0);
+  std::vector<Action> legal_actions = dominion_state->LegalActions();
+  // Should be 3 actions - discard copper (200), discard estate (201), or end
+  // (0)
+  SPIEL_CHECK_EQ(legal_actions.size(), 3);
+  SPIEL_CHECK_EQ(legal_actions[0], 0);
+  SPIEL_CHECK_EQ(legal_actions[1], 200);
+  SPIEL_CHECK_EQ(legal_actions[2], 201);
+
+  // Choose to discard both cards
+  dominion_state->ApplyAction(200);  // Discard Copper
+  dominion_state->ApplyAction(200);  // Discard Estate
+  dominion_state->ApplyAction(0);    // End discarding
+
+  SPIEL_CHECK_EQ(dominion_state->players[0].hand.size(), 0);
+  SPIEL_CHECK_EQ(dominion_state->players[0].discard.size(), 2);
+  SPIEL_CHECK_EQ(dominion_state->players[0].discard[0]->name, "Copper");
+  SPIEL_CHECK_EQ(dominion_state->players[0].discard[1]->name, "Estate");
+  SPIEL_CHECK_EQ(dominion_state->players[0].deck.size(), 2);
+
+  // Should now be in chance state for drawing 2 cards
+  SPIEL_CHECK_TRUE(dominion_state->IsChanceNode());
+  dominion_state->ApplyAction(0);  // Draw Silver
+  dominion_state->ApplyAction(0);  // Draw Gold
+
+  // Verify final state
+  SPIEL_CHECK_EQ(dominion_state->players[0].hand.size(), 2);
+  SPIEL_CHECK_EQ(dominion_state->players[0].hand[0]->name, "Silver");
+  SPIEL_CHECK_EQ(dominion_state->players[0].hand[1]->name, "Gold");
+  SPIEL_CHECK_EQ(dominion_state->players[0].discard.size(), 2);
+  SPIEL_CHECK_EQ(dominion_state->players[0].discard[0]->name, "Copper");
+  SPIEL_CHECK_EQ(dominion_state->players[0].discard[1]->name, "Estate");
+  SPIEL_CHECK_EQ(dominion_state->players[0].deck.size(), 0);
+  SPIEL_CHECK_FALSE(dominion_state->IsChanceNode());
+}
+
 void BasicDominionTests() {
   testing::LoadGameTest("dominion");
   std::shared_ptr<const Game> game = LoadGame("dominion");
@@ -355,5 +414,6 @@ int main(int argc, char **argv) {
   open_spiel::dominion::WorkshopTests();
   open_spiel::dominion::ChapelTests();
   open_spiel::dominion::GameOverTests();
+  open_spiel::dominion::CellarTests();
   open_spiel::dominion::BasicDominionTests();
 }

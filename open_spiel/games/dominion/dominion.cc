@@ -316,6 +316,16 @@ Coroutine DominionState::DrawHandForAllPlayers() {
   co_return;
 }
 
+void DominionState::TrashFromHand(size_t hand_index) {
+  trash.push_back(CurrentHand()[hand_index]);
+  CurrentHand().erase(CurrentHand().begin() + hand_index);
+}
+
+void DominionState::DiscardFromHand(size_t hand_index) {
+  CurrentDiscard().push_back(CurrentHand()[hand_index]);
+  CurrentHand().erase(CurrentHand().begin() + hand_index);
+}
+
 std::vector<Card *> &DominionState::CurrentDeck() {
   return CurrentPlayerState().deck;
 }

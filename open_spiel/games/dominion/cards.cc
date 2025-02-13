@@ -106,9 +106,33 @@ Coroutine Chapel::Play(DominionState &state) const {
     }
     DominionAction action = co_await getDominionAction(state, actions);
     if (action.type == DominionAction::Type::kEnd) break;
-    state.trash.push_back(state.CurrentHand()[action.index]);
-    state.CurrentHand().erase(state.CurrentHand().begin() + action.index);
+    state.TrashFromHand(action.index);
   }
+  co_return;
+}
+
+Coroutine Cellar::Play(DominionState &state) const {
+  state.n_actions += 1;
+
+  int cards_discarded = 0;
+  while (true) {
+    std::vector<Action> hand_choices(state.CurrentHand().size());
+    std::iota(hand_choices.begin(), hand_choices.end(), 0);
+    std::vector<Action> actions;
+    actions.reserve(hand_choices.size() + 1);
+    actions.push_back(0);  // End action
+    for (Action hand_choice : hand_choices) {
+      actions.push_back(
+          DominionAction(DominionAction::Type::kSelectHandCard, hand_choice)
+              .ToAction());
+    }
+    DominionAction action = co_await getDominionAction(state, actions);
+    if (action.type == DominionAction::Type::kEnd) break;
+    state.DiscardFromHand(action.index);
+    cards_discarded++;
+  }
+
+  co_await state.DrawCard(cards_discarded);
   co_return;
 }
 }  // namespace dominion

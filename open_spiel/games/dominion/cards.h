@@ -141,5 +141,11 @@ class Province : public BasicVictory {
  public:
   Province() : BasicVictory{8, 6, "Province"} {}
 };
+
+class Cellar : public Card {
+ public:
+  Cellar() : Card{{CardType::Action}, 2, "Cellar"} {}
+  Coroutine Play(DominionState &state) const override;
+};
 }  // namespace dominion
 }  // namespace open_spiel

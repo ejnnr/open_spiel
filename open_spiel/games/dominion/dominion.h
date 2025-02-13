@@ -90,6 +90,8 @@ class DominionState : public State {
   bool IsGameOver() const;
   void SampleAllChanceNodes();
   Coroutine DrawHandForAllPlayers();
+  void TrashFromHand(size_t hand_index);
+  void DiscardFromHand(size_t hand_index);
 
   // Convenience aliases
   std::vector<Card *> &CurrentDeck();
