@@ -71,11 +71,11 @@ void ApplyActionTestClone(const Game& game, State* state,
 // original state and cloned state are equal using their string
 // representation.
 void ApplyActionTestClone(const Game& game, State* state, Action action) {
-  // std::unique_ptr<State> clone = state->Clone();
+  std::unique_ptr<State> clone = state->Clone();
   state->ApplyAction(action);
-  // clone->ApplyAction(action);
-  // SPIEL_CHECK_EQ(state->ToString(), clone->ToString());
-  // SPIEL_CHECK_EQ(state->History(), clone->History());
+  clone->ApplyAction(action);
+  SPIEL_CHECK_EQ(state->ToString(), clone->ToString());
+  SPIEL_CHECK_EQ(state->History(), clone->History());
 }
 
 // Check that the legal actions list is empty for the non-current player.

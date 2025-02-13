@@ -223,7 +223,11 @@ std::vector<double> DominionState::Returns() const {
 }
 
 std::unique_ptr<State> DominionState::Clone() const {
-  return std::unique_ptr<State>(new DominionState(*this));
+  auto clone = game_->NewInitialState();
+  for (const auto &player_and_action : FullHistory()) {
+    clone->ApplyAction(player_and_action.action);
+  }
+  return clone;
 }
 
 ActionsAndProbs DominionState::ChanceOutcomes() const {
