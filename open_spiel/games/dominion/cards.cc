@@ -135,5 +135,25 @@ Coroutine Cellar::Play(DominionState &state) const {
   co_await state.DrawCard(cards_discarded);
   co_return;
 }
+
+Coroutine Moneylender::Play(DominionState &state) const {
+  // find Copper in hand
+  auto copper_it =
+      std::find_if(state.CurrentHand().begin(), state.CurrentHand().end(),
+                   [](const Card *card) { return card->name == "Copper"; });
+
+  // If there's no Copper, Moneylender is a no-op
+  if (copper_it == state.CurrentHand().end()) co_return;
+
+  // Trashing is optional, which matters with throne room.
+  // We use 0 as the "no-op" action for consistency with "End phase" etc.
+  Action action = co_await getAction(state, {0, 1});
+  if (action == 1) {
+    state.TrashFromHand(copper_it);
+    state.n_coins += 3;
+  }
+  co_return;
+}
+
 }  // namespace dominion
 }  // namespace open_spiel

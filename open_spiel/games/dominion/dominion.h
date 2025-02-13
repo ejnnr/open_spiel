@@ -91,7 +91,9 @@ class DominionState : public State {
   void SampleAllChanceNodes();
   Coroutine DrawHandForAllPlayers();
   void TrashFromHand(size_t hand_index);
+  void TrashFromHand(std::vector<Card *>::iterator it);
   void DiscardFromHand(size_t hand_index);
+  void DiscardFromHand(std::vector<Card *>::iterator it);
 
   // Convenience aliases
   std::vector<Card *> &CurrentDeck();

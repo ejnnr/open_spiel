@@ -321,9 +321,19 @@ void DominionState::TrashFromHand(size_t hand_index) {
   CurrentHand().erase(CurrentHand().begin() + hand_index);
 }
 
+void DominionState::TrashFromHand(std::vector<Card *>::iterator it) {
+  trash.push_back(*it);
+  CurrentHand().erase(it);
+}
+
 void DominionState::DiscardFromHand(size_t hand_index) {
   CurrentDiscard().push_back(CurrentHand()[hand_index]);
   CurrentHand().erase(CurrentHand().begin() + hand_index);
+}
+
+void DominionState::DiscardFromHand(std::vector<Card *>::iterator it) {
+  CurrentDiscard().push_back(*it);
+  CurrentHand().erase(it);
 }
 
 std::vector<Card *> &DominionState::CurrentDeck() {

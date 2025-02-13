@@ -396,6 +396,92 @@ void CellarTests() {
   SPIEL_CHECK_FALSE(dominion_state->IsChanceNode());
 }
 
+void MoneylenderTests() {
+  GameParameters params;
+  std::shared_ptr<const Game> game = LoadGame("dominion", params);
+  std::unique_ptr<State> state = game->NewInitialState();
+  DominionState *dominion_state = static_cast<DominionState *>(state.get());
+
+  dominion_state->SampleAllChanceNodes();
+  dominion_state->players[0].hand.clear();
+  dominion_state->players[0].hand.push_back(card_registry::get("Copper"));
+  dominion_state->players[0].hand.push_back(card_registry::get("Moneylender"));
+  dominion_state->players[0].hand.push_back(card_registry::get("Estate"));
+  dominion_state->players[0].hand.push_back(card_registry::get("Copper"));
+  dominion_state->players[0].deck.clear();
+  dominion_state->players[0].discard.clear();
+
+  // Play Moneylender
+  dominion_state->PlayCard(1);
+
+  SPIEL_CHECK_EQ(dominion_state->n_actions, 0);
+  SPIEL_CHECK_EQ(dominion_state->n_coins, 0);
+  SPIEL_CHECK_EQ(dominion_state->players[0].hand.size(), 3);
+  SPIEL_CHECK_EQ(dominion_state->players[0].hand[0]->name, "Copper");
+  SPIEL_CHECK_EQ(dominion_state->players[0].hand[1]->name, "Estate");
+  SPIEL_CHECK_EQ(dominion_state->players[0].hand[2]->name, "Copper");
+  std::vector<Action> legal_actions = dominion_state->LegalActions();
+  SPIEL_CHECK_EQ(legal_actions.size(), 2);
+  SPIEL_CHECK_EQ(legal_actions[0], 0);
+  SPIEL_CHECK_EQ(legal_actions[1], 1);
+
+  // Choose to trash the Copper
+  dominion_state->ApplyAction(1);
+  SPIEL_CHECK_EQ(dominion_state->n_coins, 3);
+  SPIEL_CHECK_EQ(dominion_state->players[0].hand.size(), 2);
+  SPIEL_CHECK_EQ(dominion_state->players[0].hand[0]->name, "Estate");
+  SPIEL_CHECK_EQ(dominion_state->players[0].hand[1]->name, "Copper");
+  SPIEL_CHECK_EQ(dominion_state->players[0].discard.size(), 0);
+  SPIEL_CHECK_EQ(dominion_state->trash.size(), 1);
+  SPIEL_CHECK_EQ(dominion_state->trash[0]->name, "Copper");
+
+  legal_actions = dominion_state->LegalActions();
+  // Only legal action should be to end action phase
+  SPIEL_CHECK_EQ(legal_actions.size(), 1);
+  SPIEL_CHECK_EQ(legal_actions[0], 0);
+
+  // Reset everything to test choosing not to trash
+  dominion_state->SampleAllChanceNodes();
+  dominion_state->n_actions = 1;
+  dominion_state->n_coins = 0;
+  dominion_state->players[0].hand.clear();
+  dominion_state->players[0].hand.push_back(card_registry::get("Copper"));
+  dominion_state->players[0].hand.push_back(card_registry::get("Moneylender"));
+  dominion_state->players[0].hand.push_back(card_registry::get("Estate"));
+  dominion_state->players[0].hand.push_back(card_registry::get("Copper"));
+  dominion_state->players[0].deck.clear();
+  dominion_state->players[0].discard.clear();
+  dominion_state->players[0].playing_area.clear();
+  dominion_state->trash.clear();
+  // Play Moneylender
+  dominion_state->PlayCard(1);
+
+  // Test not trashing the Copper
+  dominion_state->ApplyAction(0);
+  SPIEL_CHECK_EQ(dominion_state->n_coins, 0);
+  SPIEL_CHECK_EQ(dominion_state->players[0].hand.size(), 3);
+  SPIEL_CHECK_EQ(dominion_state->players[0].hand[0]->name, "Copper");
+  SPIEL_CHECK_EQ(dominion_state->players[0].hand[1]->name, "Estate");
+  SPIEL_CHECK_EQ(dominion_state->players[0].hand[2]->name, "Copper");
+
+  // Test playing when no Copper is in hand
+  dominion_state->n_actions = 1;
+  dominion_state->n_coins = 0;
+  dominion_state->players[0].hand.clear();
+  dominion_state->players[0].hand.push_back(card_registry::get("Moneylender"));
+  dominion_state->players[0].hand.push_back(card_registry::get("Estate"));
+  dominion_state->players[0].hand.push_back(card_registry::get("Cellar"));
+  dominion_state->PlayCard(0);
+  SPIEL_CHECK_EQ(dominion_state->n_coins, 0);
+  // Make sure we're back in the normal action phase, no pending choices.
+  // Hack to make Cellar playable:
+  dominion_state->n_actions = 1;
+  legal_actions = dominion_state->LegalActions();
+  SPIEL_CHECK_EQ(legal_actions.size(), 2);
+  SPIEL_CHECK_EQ(legal_actions[0], 0);
+  SPIEL_CHECK_EQ(legal_actions[1], 201);
+}
+
 void BasicDominionTests() {
   testing::LoadGameTest("dominion");
   std::shared_ptr<const Game> game = LoadGame("dominion");
@@ -415,5 +501,6 @@ int main(int argc, char **argv) {
   open_spiel::dominion::ChapelTests();
   open_spiel::dominion::GameOverTests();
   open_spiel::dominion::CellarTests();
+  open_spiel::dominion::MoneylenderTests();
   open_spiel::dominion::BasicDominionTests();
 }

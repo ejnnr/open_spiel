@@ -34,6 +34,7 @@ void init() {
   registry_vector.push_back(std::make_unique<Workshop>());
   registry_vector.push_back(std::make_unique<Chapel>());
   registry_vector.push_back(std::make_unique<Cellar>());
+  registry_vector.push_back(std::make_unique<Moneylender>());
 
   for (size_t i = 0; i < registry_vector.size(); ++i) {
     Card *card = registry_vector[i].get();
