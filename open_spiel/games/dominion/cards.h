@@ -102,6 +102,41 @@ class Moneylender : public Card {
   Coroutine Play(DominionState &state) const override;
 };
 
+class Remodel : public Card {
+ public:
+  Remodel() : Card{{CardType::Action}, 4, "Remodel"} {}
+  Coroutine Play(DominionState &state) const override;
+};
+
+class ThroneRoom : public Card {
+ public:
+  ThroneRoom() : Card{{CardType::Action}, 4, "Throne Room"} {}
+  Coroutine Play(DominionState &state) const override;
+};
+
+class Library : public Card {
+ public:
+  Library() : Card{{CardType::Action}, 5, "Library"} {}
+  Coroutine Play(DominionState &state) const override;
+};
+
+class Witch : public Card {
+ public:
+  Witch() : Card{{CardType::Action}, 5, "Witch"} {}
+  Coroutine Play(DominionState &state) const override;
+};
+
+class Artisan : public Card {
+ public:
+  Artisan() : Card{{CardType::Action}, 6, "Artisan"} {}
+  Coroutine Play(DominionState &state) const override;
+};
+
+class Gardens : public Card {
+ public:
+  Gardens() : Card{{CardType::Victory}, 4, "Gardens"} {}
+};
+
 class BasicTreasure : public Card {
  public:
   BasicTreasure(int cost, int value, const std::string &name)
