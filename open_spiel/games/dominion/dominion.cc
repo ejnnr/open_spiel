@@ -126,28 +126,39 @@ void DominionState::DoApplyAction(Action action_id) {
     continuation_copy->resume();
     pending_action.reset();
     return;
+  } else {
+    DominionAction action = DominionAction(action_id);
+    if (phase == Phase::Action) {
+      if (action.type == ActionType::kSelectHandCard) {
+        assert(action.index < CurrentHand().size());
+        assert(CurrentHand()[action.index]->IsAction());
+        PlayCard(action.index);
+      } else if (action.type == ActionType::kEnd) {
+        NextPhase();
+      }
+    } else if (phase == Phase::Buy) {
+      if (action.type == ActionType::kSelectSupplyCard) {
+        assert(action.index < supply_counts.size());
+        Buy(action.index);
+      } else if (action.type == ActionType::kSelectHandCard) {
+        assert(action.index < CurrentHand().size());
+        assert(CurrentHand()[action.index]->IsTreasure());
+        PlayCard(action.index);
+      } else if (action.type == ActionType::kEnd) {
+        NextPhase();
+      }
+    }
   }
 
-  DominionAction action = DominionAction(action_id);
-  if (phase == Phase::Action) {
-    if (action.type == ActionType::kSelectHandCard) {
-      assert(action.index < CurrentHand().size());
-      assert(CurrentHand()[action.index]->IsAction());
-      PlayCard(action.index);
-    } else if (action.type == ActionType::kEnd) {
-      NextPhase();
-    }
-  } else if (phase == Phase::Buy) {
-    if (action.type == ActionType::kSelectSupplyCard) {
-      assert(action.index < supply_counts.size());
-      Buy(action.index);
-    } else if (action.type == ActionType::kSelectHandCard) {
-      assert(action.index < CurrentHand().size());
-      assert(CurrentHand()[action.index]->IsTreasure());
-      PlayCard(action.index);
-    } else if (action.type == ActionType::kEnd) {
-      NextPhase();
-    }
+  // If there's only one legal action, we auto-pick it. This will recursively
+  // keep auto-picking actions until there's an actual decision to be made.
+  auto legal_actions = LegalActions();
+  if (legal_actions.size() == 1) {
+    // Note DoApplyAction instead of ApplyAction; we don't count these
+    // auto-picked actions towards history. (If we did, the history would in
+    // fact be wrong because the auto-picked action would be inserted before the
+    // current one.)
+    DoApplyAction(legal_actions[0]);
   }
 }
 
