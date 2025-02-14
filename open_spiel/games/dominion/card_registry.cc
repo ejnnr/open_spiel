@@ -24,12 +24,12 @@ void init() {
   registry_vector.push_back(std::make_unique<Estate>());
   registry_vector.push_back(std::make_unique<Duchy>());
   registry_vector.push_back(std::make_unique<Province>());
-  // registry_vector.push_back(std::make_unique<Village>());
-  // registry_vector.push_back(std::make_unique<Woodcutter>());
+  registry_vector.push_back(std::make_unique<Village>());
+  registry_vector.push_back(std::make_unique<Woodcutter>());
   registry_vector.push_back(std::make_unique<Smithy>());
-  // registry_vector.push_back(std::make_unique<Market>());
-  // registry_vector.push_back(std::make_unique<Festival>());
-  // registry_vector.push_back(std::make_unique<Laboratory>());
+  registry_vector.push_back(std::make_unique<Market>());
+  registry_vector.push_back(std::make_unique<Festival>());
+  registry_vector.push_back(std::make_unique<Laboratory>());
   registry_vector.push_back(std::make_unique<CouncilRoom>());
   registry_vector.push_back(std::make_unique<Workshop>());
   registry_vector.push_back(std::make_unique<Chapel>());

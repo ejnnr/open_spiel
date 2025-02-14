@@ -49,6 +49,7 @@ const GameType kGameType{/*short_name=*/"dominion",
                          // TODO: update this
                          {
                              {"players", GameParameter(kDefaultPlayers)},
+                             {"small_supply", GameParameter(false)},
                          }};
 
 std::shared_ptr<const Game> Factory(const GameParameters &params) {
@@ -468,16 +469,21 @@ std::unique_ptr<State> DominionGame::NewInitialState() const {
     throw std::invalid_argument("Number of players must be at least 1");
   // TODO: these should depend on num_players_, and we should deduct starting
   // cards
-  state->supply_counts[card_registry::get_id("Copper")] = 60;
-  state->supply_counts[card_registry::get_id("Silver")] = 40;
-  state->supply_counts[card_registry::get_id("Gold")] = 30;
-  state->supply_counts[card_registry::get_id("Estate")] = 8;
-  state->supply_counts[card_registry::get_id("Duchy")] = 8;
-  state->supply_counts[card_registry::get_id("Province")] = 8;
+  // small_supply is a parameter to speed up random playthroughs in testing
+  bool small_supply = ParameterValue<bool>("small_supply");
+  state->supply_counts[card_registry::get_id("Copper")] =
+      small_supply ? 10 : 60;
+  state->supply_counts[card_registry::get_id("Silver")] =
+      small_supply ? 10 : 40;
+  state->supply_counts[card_registry::get_id("Gold")] = small_supply ? 10 : 30;
+  state->supply_counts[card_registry::get_id("Estate")] = small_supply ? 4 : 8;
+  state->supply_counts[card_registry::get_id("Duchy")] = small_supply ? 4 : 8;
+  state->supply_counts[card_registry::get_id("Province")] =
+      small_supply ? 4 : 8;
 
   for (size_t i = 0; i < card_registry::num_cards(); ++i) {
     if (card_registry::get(i)->IsType(CardType::Action))
-      state->supply_counts[i] = 10;
+      state->supply_counts[i] = small_supply ? 5 : 10;
   }
 
   state->ResetCounters();

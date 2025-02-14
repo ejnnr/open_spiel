@@ -537,8 +537,8 @@ void RemodelTests() {
 
 void BasicDominionTests() {
   testing::LoadGameTest("dominion");
-  std::shared_ptr<const Game> game = LoadGame("dominion");
-  testing::RandomSimTest(*game, /*num_sims=*/10);
+  std::shared_ptr<const Game> game = LoadGame("dominion(small_supply=true)");
+  testing::RandomSimTest(*game, /*num_sims=*/5);
 }
 
 }  // namespace
