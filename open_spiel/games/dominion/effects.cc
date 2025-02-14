@@ -19,7 +19,7 @@ void Coroutine::await_suspend(std::coroutine_handle<Promise> handle) {
 Action ActionAwaiter::await_resume() { return state.pending_action.value(); }
 
 DominionAction DominionActionAwaiter::await_resume() {
-  return DominionAction::FromAction(state.pending_action.value());
+  return DominionAction(state.pending_action.value());
 }
 
 ActionAwaiter getAction(DominionState &state,

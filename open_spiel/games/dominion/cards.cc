@@ -73,15 +73,13 @@ Coroutine Workshop::Play(DominionState &state) const {
   std::vector<Action> legal_actions;
   for (size_t i = 0; i < state.supply_counts.size(); ++i) {
     if (state.supply_counts[i] > 0 && card_registry::get(i)->cost <= 4) {
-      legal_actions.push_back(
-          DominionAction(DominionAction::Type::kSelectSupplyCard, i)
-              .ToAction());
+      legal_actions.push_back(GetActionId(ActionType::kSelectSupplyCard, i));
     }
   }
   if (legal_actions.empty()) co_return;
 
   DominionAction action = co_await getDominionAction(state, legal_actions);
-  SPIEL_CHECK_EQ(action.type, DominionAction::Type::kSelectSupplyCard);
+  SPIEL_CHECK_EQ(action.type, ActionType::kSelectSupplyCard);
   SPIEL_CHECK_GE(action.index, 0);
   SPIEL_CHECK_LT(action.index, state.supply_counts.size());
   if (state.supply_counts[action.index] > 0) {
@@ -100,12 +98,10 @@ Coroutine Chapel::Play(DominionState &state) const {
     actions.reserve(hand_choices.size() + 1);
     actions.push_back(0);
     for (Action hand_choice : hand_choices) {
-      actions.push_back(
-          DominionAction(DominionAction::Type::kSelectHandCard, hand_choice)
-              .ToAction());
+      actions.push_back(GetActionId(ActionType::kSelectHandCard, hand_choice));
     }
     DominionAction action = co_await getDominionAction(state, actions);
-    if (action.type == DominionAction::Type::kEnd) break;
+    if (action.type == ActionType::kEnd) break;
     state.TrashFromHand(action.index);
   }
   co_return;
@@ -122,12 +118,10 @@ Coroutine Cellar::Play(DominionState &state) const {
     actions.reserve(hand_choices.size() + 1);
     actions.push_back(0);  // End action
     for (Action hand_choice : hand_choices) {
-      actions.push_back(
-          DominionAction(DominionAction::Type::kSelectHandCard, hand_choice)
-              .ToAction());
+      actions.push_back(GetActionId(ActionType::kSelectHandCard, hand_choice));
     }
     DominionAction action = co_await getDominionAction(state, actions);
-    if (action.type == DominionAction::Type::kEnd) break;
+    if (action.type == ActionType::kEnd) break;
     state.DiscardFromHand(action.index);
     cards_discarded++;
   }
@@ -161,8 +155,7 @@ Coroutine Remodel::Play(DominionState &state) const {
   std::vector<Action> legal_actions;
   legal_actions.reserve(state.CurrentHand().size());
   for (size_t i = 0; i < state.CurrentHand().size(); ++i) {
-    legal_actions.push_back(
-        DominionAction(DominionAction::Type::kSelectHandCard, i).ToAction());
+    legal_actions.push_back(GetActionId(ActionType::kSelectHandCard, i));
   }
 
   DominionAction action = co_await getDominionAction(state, legal_actions);
@@ -171,9 +164,7 @@ Coroutine Remodel::Play(DominionState &state) const {
   std::vector<Action> supply_choices{};
   for (size_t i = 0; i < state.supply_counts.size(); ++i) {
     if (state.supply_counts[i] > 0 && card_registry::get(i)->cost <= 4) {
-      supply_choices.push_back(
-          DominionAction(DominionAction::Type::kSelectSupplyCard, i)
-              .ToAction());
+      supply_choices.push_back(GetActionId(ActionType::kSelectSupplyCard, i));
     }
   }
   if (supply_choices.empty()) co_return;

@@ -234,15 +234,14 @@ void WorkshopTests() {
   // Should at least be copper, silver, estate, workshop
   SPIEL_CHECK_GE(legal_actions.size(), 4);
   for (Action action : legal_actions) {
-    DominionAction choice = DominionAction::FromAction(action);
-    SPIEL_CHECK_EQ(choice.type, DominionAction::Type::kSelectSupplyCard);
+    DominionAction choice = DominionAction(action);
+    SPIEL_CHECK_EQ(choice.type, ActionType::kSelectSupplyCard);
     SPIEL_CHECK_LE(card_registry::get(choice.index)->cost, 4);
   }
 
   // Choose to gain a Silver (costs 3)
-  Action gain_silver = DominionAction(DominionAction::Type::kSelectSupplyCard,
-                                      card_registry::get_id("Silver"))
-                           .ToAction();
+  Action gain_silver = GetActionId(ActionType::kSelectSupplyCard,
+                                   card_registry::get_id("Silver"));
   dominion_state->ApplyAction(gain_silver);
 
   // Verify Silver was gained to discard
@@ -500,21 +499,19 @@ void RemodelTests() {
   dominion_state->PlayCard(0);
 
   // Choose Estate to trash (costs 2)
-  dominion_state->ApplyAction(
-      DominionAction(DominionAction::Type::kSelectHandCard, 0).ToAction());
+  dominion_state->ApplyAction(GetActionId(ActionType::kSelectHandCard, 0));
 
   // Should be able to at least gain Copper, Estate, Silver, Remodel
   std::vector<Action> legal_actions = dominion_state->LegalActions();
   SPIEL_CHECK_GE(legal_actions.size(), 4);
   for (Action action : legal_actions) {
-    DominionAction choice = DominionAction::FromAction(action);
-    SPIEL_CHECK_EQ(choice.type, DominionAction::Type::kSelectSupplyCard);
+    DominionAction choice = DominionAction(action);
+    SPIEL_CHECK_EQ(choice.type, ActionType::kSelectSupplyCard);
     SPIEL_CHECK_LE(card_registry::get(choice.index)->cost, 4);
   }
 
   // Choose Silver to gain (costs 3)
-  dominion_state->ApplyAction(
-      DominionAction(DominionAction::Type::kSelectSupplyCard, 1).ToAction());
+  dominion_state->ApplyAction(GetActionId(ActionType::kSelectSupplyCard, 1));
 
   // Verify Estate was trashed
   SPIEL_CHECK_EQ(dominion_state->trash.size(), 1);

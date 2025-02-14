@@ -89,13 +89,13 @@ std::string DominionState::ActionToString(Player player,
   if (continuation_ && action_id != 0 && action_id < 100) {
     return "Custom action " + std::to_string(action_id);
   }
-  DominionAction action = DominionAction::FromAction(action_id);
+  DominionAction action = DominionAction(action_id);
   switch (action.type) {
-    case DominionAction::Type::kEnd:
+    case ActionType::kEnd:
       return "End";
-    case DominionAction::Type::kSelectSupplyCard:
+    case ActionType::kSelectSupplyCard:
       return "Select supply card " + card_registry::get(action.index)->name;
-    case DominionAction::Type::kSelectHandCard:
+    case ActionType::kSelectHandCard:
       // OpenSpiel doesn't allow duplicate action strings, so need to use the
       // index.
       // TODO: make it so there's only one action per card type in hand, given
@@ -128,24 +128,24 @@ void DominionState::DoApplyAction(Action action_id) {
     return;
   }
 
-  DominionAction action = DominionAction::FromAction(action_id);
+  DominionAction action = DominionAction(action_id);
   if (phase == Phase::Action) {
-    if (action.type == DominionAction::Type::kSelectHandCard) {
+    if (action.type == ActionType::kSelectHandCard) {
       assert(action.index < CurrentHand().size());
       assert(CurrentHand()[action.index]->IsAction());
       PlayCard(action.index);
-    } else if (action.type == DominionAction::Type::kEnd) {
+    } else if (action.type == ActionType::kEnd) {
       NextPhase();
     }
   } else if (phase == Phase::Buy) {
-    if (action.type == DominionAction::Type::kSelectSupplyCard) {
+    if (action.type == ActionType::kSelectSupplyCard) {
       assert(action.index < supply_counts.size());
       Buy(action.index);
-    } else if (action.type == DominionAction::Type::kSelectHandCard) {
+    } else if (action.type == ActionType::kSelectHandCard) {
       assert(action.index < CurrentHand().size());
       assert(CurrentHand()[action.index]->IsTreasure());
       PlayCard(action.index);
-    } else if (action.type == DominionAction::Type::kEnd) {
+    } else if (action.type == ActionType::kEnd) {
       NextPhase();
     }
   }
@@ -164,28 +164,22 @@ std::vector<Action> DominionState::LegalActions() const {
     if (n_actions > 0) {
       for (size_t i = 0; i < CurrentHand().size(); ++i) {
         if (CurrentHand()[i]->IsAction())
-          actions.push_back(
-              DominionAction(DominionAction::Type::kSelectHandCard, i)
-                  .ToAction());
+          actions.push_back(GetActionId(ActionType::kSelectHandCard, i));
       }
     }
   } else if (phase == Phase::Buy) {
     for (size_t i = 0; i < CurrentHand().size(); ++i) {
       if (CurrentHand()[i]->IsTreasure())
-        actions.push_back(
-            DominionAction(DominionAction::Type::kSelectHandCard, i)
-                .ToAction());
+        actions.push_back(GetActionId(ActionType::kSelectHandCard, i));
     }
     if (n_buys > 0) {
       for (size_t i = 0; i < supply_counts.size(); ++i) {
         if (supply_counts[i] > 0 && card_registry::get(i)->cost <= n_coins)
-          actions.push_back(
-              DominionAction(DominionAction::Type::kSelectSupplyCard, i)
-                  .ToAction());
+          actions.push_back(GetActionId(ActionType::kSelectSupplyCard, i));
       }
     }
   }
-  actions.push_back(DominionAction(DominionAction::Type::kEnd).ToAction());
+  actions.push_back(GetActionId(ActionType::kEnd));
   std::sort(actions.begin(), actions.end());
   return actions;
 }

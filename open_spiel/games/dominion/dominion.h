@@ -44,21 +44,46 @@ namespace open_spiel {
 namespace dominion {
 class DominionGame;
 
+enum class ActionType {
+  kEnd,
+  kSelectSupplyCard,
+  kSelectHandCard,
+};
+
+inline std::ostream &operator<<(std::ostream &os,
+                                const ActionType &action_type) {
+  if (action_type == ActionType::kEnd) {
+    return os << "End";
+  } else if (action_type == ActionType::kSelectSupplyCard) {
+    return os << "SelectSupplyCard";
+  } else if (action_type == ActionType::kSelectHandCard) {
+    return os << "SelectHandCard";
+  }
+}
+
+constexpr size_t kActionIdBase = 100;
+
+inline Action GetActionId(ActionType type, size_t index = 0) {
+  return static_cast<Action>(static_cast<int>(type) * kActionIdBase + index);
+}
+
+inline ActionType GetActionType(Action action) {
+  return static_cast<ActionType>(action / kActionIdBase);
+}
+
+inline size_t GetActionIndex(Action action) { return action % kActionIdBase; }
+
 struct DominionAction {
-  enum Type {
-    kEnd,
-    kSelectSupplyCard,
-    kSelectHandCard,
-  };
-  Type type;
+  ActionType type;
   size_t index;
 
-  DominionAction(Type type, size_t index = 0) : type(type), index(index) {}
+  DominionAction(ActionType type, size_t index = 0)
+      : type(type), index(index) {}
 
-  Action ToAction() const { return static_cast<Action>(type * 100 + index); };
-  static DominionAction FromAction(Action action) {
-    return DominionAction(static_cast<Type>(action / 100), action % 100);
-  }
+  DominionAction(Action action_id)
+      : type(GetActionType(action_id)), index(GetActionIndex(action_id)) {}
+
+  Action ToAction() const { return GetActionId(type, index); }
 };
 
 class DominionState : public State {
