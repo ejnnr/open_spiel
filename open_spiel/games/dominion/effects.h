@@ -13,6 +13,22 @@ struct DominionAction;
 
 struct Promise;
 
+/*
+TODO: We should perhaps enforce co_awaiting coroutines in most contexts.
+Right now, it's possible to e.g. call DrawCard without co_awaiting it inside
+Card::Play, and this leads to incorrect behavior when the card is throned.
+
+A possible approach: in Promise::initial_suspend, we set a flag (on state)
+indicating that the coroutine was called. In Coroutine::await_suspend, we unset
+that flag, to indicate the coroutine was properly awaited. If, inside
+DominionState, we notice that the flag is set, we raise an error. (I think we'd
+need more than just one flag, but this is the basic idea.)
+
+A complication is that we occasionally want to call a coroutine without awaiting
+it. In particular, this is the case in DoApplyAction(). But perhaps we can
+enforce the correct behavior within Card::Play (which is the riskiest place).
+*/
+
 // template <typename T = void>
 struct Coroutine : std::coroutine_handle<Promise> {
   using promise_type = Promise;

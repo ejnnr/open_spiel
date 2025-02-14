@@ -308,8 +308,81 @@ void ChapelTests() {
   SPIEL_CHECK_FALSE(dominion_state->IsChanceNode());
 }
 
+void ThroneRoomTests() {
+  GameParameters params;
+  std::shared_ptr<const Game> game = LoadGame("dominion", params);
+  std::unique_ptr<State> state = game->NewInitialState();
+  DominionState *dominion_state = static_cast<DominionState *>(state.get());
+
+  // Set up initial state
+  dominion_state->SampleAllChanceNodes();
+  dominion_state->players[0].hand.clear();
+  dominion_state->players[0].hand.push_back(card_registry::get("Throne Room"));
+  dominion_state->players[0].hand.push_back(card_registry::get("Village"));
+  dominion_state->players[0].deck.clear();
+  dominion_state->players[0].deck.push_back(card_registry::get("Copper"));
+  dominion_state->players[0].deck.push_back(card_registry::get("Copper"));
+  dominion_state->players[0].deck.push_back(card_registry::get("Copper"));
+  dominion_state->players[0].discard.clear();
+
+  // Play Throne Room
+  dominion_state->PlayCard(0);
+
+  // Should be able to select Village or end
+  SPIEL_CHECK_EQ(dominion_state->CurrentPlayer(), 0);
+  std::vector<Action> legal_actions = dominion_state->LegalActions();
+  SPIEL_CHECK_EQ(legal_actions.size(), 2);  // End or Village
+  SPIEL_CHECK_EQ(legal_actions[0], 0);      // End
+  SPIEL_CHECK_EQ(legal_actions[1], 200);    // Select Village
+
+  // Choose Village
+  dominion_state->ApplyAction(200);
+  dominion_state->SampleAllChanceNodes();
+
+  // Village should have been played twice, for +2 cards and +4 actions
+  SPIEL_CHECK_EQ(dominion_state->players[0].hand.size(), 2);
+  SPIEL_CHECK_EQ(dominion_state->n_actions, 4);
+
+  // Test Throne Room on Throne Room
+  dominion_state->players[0].hand.clear();
+  dominion_state->players[0].hand.push_back(
+      card_registry::get("Throne Room"));  // First TR
+  dominion_state->players[0].hand.push_back(
+      card_registry::get("Throne Room"));  // Second TR
+  dominion_state->players[0].hand.push_back(card_registry::get("Village"));
+  dominion_state->players[0].hand.push_back(card_registry::get("Village"));
+  dominion_state->players[0].deck.clear();
+  dominion_state->players[0].deck.push_back(card_registry::get("Copper"));
+  dominion_state->players[0].deck.push_back(card_registry::get("Copper"));
+  dominion_state->players[0].deck.push_back(card_registry::get("Copper"));
+  dominion_state->players[0].deck.push_back(card_registry::get("Copper"));
+  dominion_state->players[0].discard.clear();
+  dominion_state->n_actions = 1;
+
+  // Play first Throne Room
+  dominion_state->PlayCard(0);
+
+  // Choose second Throne Room
+  dominion_state->ApplyAction(200);
+  dominion_state->SampleAllChanceNodes();
+  // only Villages left in hand, nothing drawn yet
+  SPIEL_CHECK_EQ(dominion_state->players[0].hand.size(), 2);
+
+  // Choose Village for first doubled Throne Room
+  dominion_state->ApplyAction(200);
+  dominion_state->SampleAllChanceNodes();
+  // drew 2 coppers, 1 village left:
+  SPIEL_CHECK_EQ(dominion_state->players[0].hand.size(), 3);
+  SPIEL_CHECK_EQ(dominion_state->n_actions, 4);
+
+  // Choose Village for second doubled Throne Room
+  dominion_state->ApplyAction(200);
+  dominion_state->SampleAllChanceNodes();
+  SPIEL_CHECK_EQ(dominion_state->players[0].hand.size(), 4);  // drew 4 coppers
+  SPIEL_CHECK_EQ(dominion_state->n_actions, 8);
+}
+
 void GameOverTests() {
-  card_registry::init();
   GameParameters params;
   std::shared_ptr<const Game> game = LoadGame("dominion", params);
   std::unique_ptr<State> state = game->NewInitialState();
@@ -552,6 +625,7 @@ int main(int argc, char **argv) {
   open_spiel::dominion::CellarTests();
   open_spiel::dominion::MoneylenderTests();
   open_spiel::dominion::RemodelTests();
+  open_spiel::dominion::ThroneRoomTests();
   open_spiel::dominion::BasicDominionTests();
   open_spiel::dominion::GameOverTests();
 }

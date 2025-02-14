@@ -23,7 +23,7 @@ Coroutine BasicTreasure::Play(DominionState &state) const {
 }
 
 Coroutine Village::Play(DominionState &state) const {
-  state.DrawCard(1);
+  co_await state.DrawCard(1);
   state.n_actions += 2;
   co_return;
 }
@@ -35,12 +35,12 @@ Coroutine Woodcutter::Play(DominionState &state) const {
 }
 
 Coroutine Smithy::Play(DominionState &state) const {
-  state.DrawCard(3);
+  co_await state.DrawCard(3);
   co_return;
 }
 
 Coroutine Market::Play(DominionState &state) const {
-  state.DrawCard(1);
+  co_await state.DrawCard(1);
   state.n_actions += 1;
   state.n_coins += 1;
   state.n_buys += 1;
@@ -55,7 +55,7 @@ Coroutine Festival::Play(DominionState &state) const {
 }
 
 Coroutine Laboratory::Play(DominionState &state) const {
-  state.DrawCard(2);
+  co_await state.DrawCard(2);
   state.n_actions += 1;
   co_return;
 }
@@ -172,6 +172,32 @@ Coroutine Remodel::Play(DominionState &state) const {
   DominionAction supply_action =
       co_await getDominionAction(state, supply_choices);
   state.CurrentDiscard().push_back(card_registry::get(supply_action.index));
+}
+
+Coroutine ThroneRoom::Play(DominionState &state) const {
+  std::vector<Action> legal_actions{};
+  legal_actions.push_back(GetActionId(ActionType::kEnd));
+  for (size_t i = 0; i < state.CurrentHand().size(); ++i) {
+    if (state.CurrentHand()[i]->IsAction())
+      legal_actions.push_back(GetActionId(ActionType::kSelectHandCard, i));
+  }
+
+  // Only kEnd available, so can just skip instead of pointlessly awaiting that
+  if (legal_actions.size() == 1) co_return;
+
+  DominionAction action = co_await getDominionAction(state, legal_actions);
+  if (action.type == ActionType::kEnd) co_return;
+
+  // Note: we don't want to use DominionState::PlayCard here, because that costs
+  // an action (and we can't use it the second time anyway because the card
+  // won't be in hand).
+
+  // First, use PlayerState::PlayCard to put the card in the playing area
+  Card &card = state.CurrentPlayerState().PlayCard(action.index);
+  // Then, execute the card's effect twice. We need to co_await to make sure we
+  // finish the first effect before starting the second.
+  co_await card.Play(state);
+  co_await card.Play(state);
 }
 
 }  // namespace dominion
