@@ -482,6 +482,59 @@ void MoneylenderTests() {
   SPIEL_CHECK_EQ(legal_actions[1], 201);
 }
 
+void RemodelTests() {
+  std::shared_ptr<const Game> game = LoadGame("dominion");
+  std::unique_ptr<State> state = game->NewInitialState();
+  auto dominion_state =
+      static_cast<open_spiel::dominion::DominionState *>(state.get());
+  dominion_state->SampleAllChanceNodes();
+
+  // Set up test state
+  dominion_state->players[0].hand.clear();
+  dominion_state->players[0].deck.clear();
+  dominion_state->players[0].hand.push_back(card_registry::get("Remodel"));
+  dominion_state->players[0].hand.push_back(card_registry::get("Estate"));
+  dominion_state->players[0].hand.push_back(card_registry::get("Copper"));
+
+  // Play Remodel
+  dominion_state->PlayCard(0);
+
+  // Choose Estate to trash (costs 2)
+  dominion_state->ApplyAction(
+      DominionAction(DominionAction::Type::kSelectHandCard, 0).ToAction());
+
+  // Should be able to at least gain Copper, Estate, Silver, Remodel
+  std::vector<Action> legal_actions = dominion_state->LegalActions();
+  SPIEL_CHECK_GE(legal_actions.size(), 4);
+  for (Action action : legal_actions) {
+    DominionAction choice = DominionAction::FromAction(action);
+    SPIEL_CHECK_EQ(choice.type, DominionAction::Type::kSelectSupplyCard);
+    SPIEL_CHECK_LE(card_registry::get(choice.index)->cost, 4);
+  }
+
+  // Choose Silver to gain (costs 3)
+  dominion_state->ApplyAction(
+      DominionAction(DominionAction::Type::kSelectSupplyCard, 1).ToAction());
+
+  // Verify Estate was trashed
+  SPIEL_CHECK_EQ(dominion_state->trash.size(), 1);
+  SPIEL_CHECK_EQ(dominion_state->trash[0]->name, "Estate");
+
+  // Verify Silver was gained
+  SPIEL_CHECK_EQ(dominion_state->players[0].discard.size(), 1);
+  SPIEL_CHECK_EQ(dominion_state->players[0].discard[0]->name, "Silver");
+
+  // Test playing with empty hand
+  dominion_state->n_actions = 1;
+  dominion_state->players[0].hand.clear();
+  dominion_state->players[0].hand.push_back(card_registry::get("Remodel"));
+  dominion_state->PlayCard(0);
+  // Should be back in action phase with no pending choices
+  legal_actions = dominion_state->LegalActions();
+  SPIEL_CHECK_EQ(legal_actions.size(), 1);
+  SPIEL_CHECK_EQ(legal_actions[0], 0);
+}
+
 void BasicDominionTests() {
   testing::LoadGameTest("dominion");
   std::shared_ptr<const Game> game = LoadGame("dominion");
@@ -499,8 +552,9 @@ int main(int argc, char **argv) {
   open_spiel::dominion::CouncilRoomTests();
   open_spiel::dominion::WorkshopTests();
   open_spiel::dominion::ChapelTests();
-  open_spiel::dominion::GameOverTests();
   open_spiel::dominion::CellarTests();
   open_spiel::dominion::MoneylenderTests();
+  open_spiel::dominion::RemodelTests();
   open_spiel::dominion::BasicDominionTests();
+  open_spiel::dominion::GameOverTests();
 }

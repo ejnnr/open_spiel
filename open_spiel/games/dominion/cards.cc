@@ -155,5 +155,33 @@ Coroutine Moneylender::Play(DominionState &state) const {
   co_return;
 }
 
+Coroutine Remodel::Play(DominionState &state) const {
+  if (state.CurrentHand().size() == 0) co_return;
+
+  std::vector<Action> legal_actions;
+  legal_actions.reserve(state.CurrentHand().size());
+  for (size_t i = 0; i < state.CurrentHand().size(); ++i) {
+    legal_actions.push_back(
+        DominionAction(DominionAction::Type::kSelectHandCard, i).ToAction());
+  }
+
+  DominionAction action = co_await getDominionAction(state, legal_actions);
+  state.TrashFromHand(action.index);
+
+  std::vector<Action> supply_choices{};
+  for (size_t i = 0; i < state.supply_counts.size(); ++i) {
+    if (state.supply_counts[i] > 0 && card_registry::get(i)->cost <= 4) {
+      supply_choices.push_back(
+          DominionAction(DominionAction::Type::kSelectSupplyCard, i)
+              .ToAction());
+    }
+  }
+  if (supply_choices.empty()) co_return;
+
+  DominionAction supply_action =
+      co_await getDominionAction(state, supply_choices);
+  state.CurrentDiscard().push_back(card_registry::get(supply_action.index));
+}
+
 }  // namespace dominion
 }  // namespace open_spiel
