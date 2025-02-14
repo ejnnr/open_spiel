@@ -392,20 +392,23 @@ void GameOverTests() {
   SPIEL_CHECK_FALSE(dominion_state->IsGameOver());
 
   // Game should be over if Province pile is empty
-  auto province_it = std::find_if(dominion_state->supply_counts.begin(),
-                                  dominion_state->supply_counts.end(),
-                                  [](int count) { return count == 0; });
-  if (province_it != dominion_state->supply_counts.end()) {
-    *province_it = 0;
-    SPIEL_CHECK_TRUE(dominion_state->IsGameOver());
-  }
+  size_t province_index = card_registry::get_id("Province");
+  dominion_state->supply_counts[province_index] = 0;
+  SPIEL_CHECK_TRUE(dominion_state->IsGameOver());
 
   // Game should be over if 3 supply piles are empty
-  int empty_piles = 0;
-  for (size_t i = 0; i < 3 && i < dominion_state->supply_counts.size(); ++i) {
-    dominion_state->supply_counts[i] = 0;
-    empty_piles++;
+  dominion_state->supply_counts[province_index] = 8;
+  SPIEL_CHECK_TRUE(dominion_state->supply_counts.size() >= 4);
+  SPIEL_CHECK_FALSE(dominion_state->IsGameOver());
+  int emptied_piles = 0;
+  for (size_t i = 0; i < dominion_state->supply_counts.size(); ++i) {
+    if (i != province_index) {
+      dominion_state->supply_counts[i] = 0;
+      emptied_piles++;
+    }
+    if (emptied_piles == 3) break;
   }
+  SPIEL_CHECK_EQ(emptied_piles, 3);
   SPIEL_CHECK_TRUE(dominion_state->IsGameOver());
 }
 
