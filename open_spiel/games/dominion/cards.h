@@ -8,6 +8,7 @@
 namespace open_spiel {
 namespace dominion {
 class DominionState;
+class PlayerState;
 
 enum class CardType {
   Treasure,
@@ -19,17 +20,13 @@ class Card {
  public:
   const std::set<CardType> card_types;
   const int cost;
-  const int vp;
   const std::string name;
 
-  // Card(Card&&) = default;
-  // Card& operator=(Card&&) = default;
-
-  // // Cards should not be copied
-  // Card(const Card&) = delete;
-  // Card& operator=(const Card&) = delete;
-
   virtual Coroutine Play(DominionState &state) const {};
+  virtual int GetVictoryPoints(const PlayerState &player_state) const {
+    return 0;
+  }
+
   bool IsType(CardType type) const;
   bool IsPlayable() const;
   bool IsTreasure() const { return IsType(CardType::Treasure); }
@@ -37,9 +34,8 @@ class Card {
   bool IsAction() const { return IsType(CardType::Action); }
 
  protected:
-  Card(std::set<CardType> card_types, int cost, const std::string &name,
-       int vp = 0)
-      : card_types{std::move(card_types)}, cost{cost}, name{name}, vp{vp} {}
+  Card(std::set<CardType> card_types, int cost, const std::string &name)
+      : card_types{std::move(card_types)}, cost{cost}, name{name} {}
 };
 
 class Village : public Card {
@@ -135,6 +131,7 @@ class Artisan : public Card {
 class Gardens : public Card {
  public:
   Gardens() : Card{{CardType::Victory}, 4, "Gardens"} {}
+  int GetVictoryPoints(const PlayerState &player_state) const override;
 };
 
 class BasicTreasure : public Card {
@@ -165,7 +162,14 @@ class Gold : public BasicTreasure {
 class BasicVictory : public Card {
  public:
   BasicVictory(int cost, int vp, const std::string &name)
-      : Card{{CardType::Victory}, cost, name, vp} {}
+      : Card{{CardType::Victory}, cost, name}, vp_{vp} {}
+
+  int GetVictoryPoints(const PlayerState &player_state) const override {
+    return vp_;
+  }
+
+ private:
+  const int vp_;
 };
 
 class Estate : public BasicVictory {

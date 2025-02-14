@@ -485,6 +485,7 @@ std::unique_ptr<State> DominionGame::NewInitialState() const {
   state->supply_counts[card_registry::get_id("Duchy")] = small_supply ? 4 : 8;
   state->supply_counts[card_registry::get_id("Province")] =
       small_supply ? 4 : 8;
+  state->supply_counts[card_registry::get_id("Gardens")] = small_supply ? 4 : 8;
 
   for (size_t i = 0; i < card_registry::num_cards(); ++i) {
     if (card_registry::get(i)->IsType(CardType::Action))

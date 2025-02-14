@@ -3,6 +3,7 @@
 #include "open_spiel/games/dominion/card_registry.h"
 #include "open_spiel/games/dominion/dominion.h"
 #include "open_spiel/games/dominion/effects.h"
+#include "open_spiel/games/dominion/player_state.h"
 
 namespace open_spiel {
 namespace dominion {
@@ -198,6 +199,13 @@ Coroutine ThroneRoom::Play(DominionState &state) const {
   // finish the first effect before starting the second.
   co_await card.Play(state);
   co_await card.Play(state);
+}
+
+int Gardens::GetVictoryPoints(const PlayerState &player_state) const {
+  int total_cards = player_state.deck.size() + player_state.hand.size() +
+                    player_state.playing_area.size() +
+                    player_state.discard.size();
+  return total_cards / 10;
 }
 
 }  // namespace dominion

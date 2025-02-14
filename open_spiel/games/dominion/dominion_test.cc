@@ -608,6 +608,71 @@ void RemodelTests() {
   SPIEL_CHECK_EQ(legal_actions[0], 0);
 }
 
+void GardensTests() {
+  GameParameters params;
+  std::shared_ptr<const Game> game = LoadGame("dominion", params);
+  std::unique_ptr<State> state = game->NewInitialState();
+  DominionState *dominion_state = static_cast<DominionState *>(state.get());
+
+  // Set up initial state
+  dominion_state->SampleAllChanceNodes();
+  dominion_state->players[0].hand.clear();
+  dominion_state->players[0].deck.clear();
+  dominion_state->players[0].discard.clear();
+  dominion_state->players[0].playing_area.clear();
+
+  // Test with 0 cards (just Gardens) -> 0 VP
+  dominion_state->players[0].hand.push_back(card_registry::get("Gardens"));
+  SPIEL_CHECK_EQ(dominion_state->players[0].VpCount(), 0);
+
+  // Test with 9 cards -> 0 VP
+  for (int i = 0; i < 8; ++i) {
+    dominion_state->players[0].deck.push_back(card_registry::get("Copper"));
+  }
+  SPIEL_CHECK_EQ(dominion_state->players[0].VpCount(), 0);
+
+  // Test with 10 cards -> 1 VP
+  dominion_state->players[0].deck.push_back(card_registry::get("Copper"));
+  SPIEL_CHECK_EQ(dominion_state->players[0].VpCount(), 1);
+
+  // Test with 19 cards -> 1 VP
+  for (int i = 0; i < 9; ++i) {
+    dominion_state->players[0].discard.push_back(card_registry::get("Copper"));
+  }
+  SPIEL_CHECK_EQ(dominion_state->players[0].VpCount(), 1);
+
+  // Test with 20 cards -> 2 VP
+  dominion_state->players[0].discard.push_back(card_registry::get("Copper"));
+  SPIEL_CHECK_EQ(dominion_state->players[0].VpCount(), 2);
+
+  // Test with cards spread across all zones
+  dominion_state->players[0].hand.clear();
+  dominion_state->players[0].deck.clear();
+  dominion_state->players[0].discard.clear();
+  dominion_state->players[0].playing_area.clear();
+
+  // Add 25 cards total (2 VP):
+  // - 5 in hand (including Gardens)
+  // - 8 in deck
+  // - 7 in discard
+  // - 5 in playing area
+  dominion_state->players[0].hand.push_back(card_registry::get("Gardens"));
+  for (int i = 0; i < 4; ++i) {
+    dominion_state->players[0].hand.push_back(card_registry::get("Copper"));
+  }
+  for (int i = 0; i < 8; ++i) {
+    dominion_state->players[0].deck.push_back(card_registry::get("Copper"));
+  }
+  for (int i = 0; i < 7; ++i) {
+    dominion_state->players[0].discard.push_back(card_registry::get("Copper"));
+  }
+  for (int i = 0; i < 5; ++i) {
+    dominion_state->players[0].playing_area.push_back(
+        card_registry::get("Copper"));
+  }
+  SPIEL_CHECK_EQ(dominion_state->players[0].VpCount(), 2);
+}
+
 void BasicDominionTests() {
   testing::LoadGameTest("dominion");
   std::shared_ptr<const Game> game = LoadGame("dominion(small_supply=true)");
@@ -629,6 +694,6 @@ int main(int argc, char **argv) {
   open_spiel::dominion::MoneylenderTests();
   open_spiel::dominion::RemodelTests();
   open_spiel::dominion::ThroneRoomTests();
-  open_spiel::dominion::BasicDominionTests();
   open_spiel::dominion::GameOverTests();
+  open_spiel::dominion::BasicDominionTests();
 }

@@ -7,6 +7,7 @@
 
 #include "card_registry.h"
 #include "cards.h"
+#include "dominion.h"
 
 namespace open_spiel {
 namespace dominion {
@@ -32,16 +33,16 @@ Card &PlayerState::PlayCard(size_t hand_index) {
 int PlayerState::VpCount() const {
   int vp = 0;
   for (const auto &card : discard) {
-    vp += card->vp;
+    vp += card->GetVictoryPoints(*this);
   }
   for (const auto &card : playing_area) {
-    vp += card->vp;
+    vp += card->GetVictoryPoints(*this);
   }
   for (const auto &card : hand) {
-    vp += card->vp;
+    vp += card->GetVictoryPoints(*this);
   }
   for (const auto &card : deck) {
-    vp += card->vp;
+    vp += card->GetVictoryPoints(*this);
   }
   return vp;
 }

@@ -24,6 +24,7 @@ void init() {
   registry_vector.push_back(std::make_unique<Estate>());
   registry_vector.push_back(std::make_unique<Duchy>());
   registry_vector.push_back(std::make_unique<Province>());
+  registry_vector.push_back(std::make_unique<Gardens>());
   registry_vector.push_back(std::make_unique<Village>());
   registry_vector.push_back(std::make_unique<Woodcutter>());
   registry_vector.push_back(std::make_unique<Smithy>());
