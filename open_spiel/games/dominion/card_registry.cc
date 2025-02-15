@@ -1,5 +1,6 @@
 #include "card_registry.h"
 
+#include <algorithm>  // for transform
 #include <string>
 #include <vector>
 
@@ -9,6 +10,13 @@ namespace {
 std::unordered_map<std::string, Card *> registry{};
 std::vector<std::unique_ptr<Card>> registry_vector{};
 std::unordered_map<std::string, size_t> name_to_id{};
+
+// Helper function to convert string to lowercase
+std::string to_lower(std::string s) {
+  std::transform(s.begin(), s.end(), s.begin(),
+                 [](unsigned char c) { return std::tolower(c); });
+  return s;
+}
 }  // namespace
 
 namespace card_registry {
@@ -44,13 +52,14 @@ void init() {
 
   for (size_t i = 0; i < registry_vector.size(); ++i) {
     Card *card = registry_vector[i].get();
-    registry[card->name] = card;
-    name_to_id[card->name] = i;
+    std::string lower_name = to_lower(card->name);
+    registry[lower_name] = card;
+    name_to_id[lower_name] = i;
   }
 }
 
 Card *get(const std::string &name) {
-  auto it = registry.find(name);
+  auto it = registry.find(to_lower(name));
   if (it == registry.end()) {
     throw std::runtime_error("Card not found: " + name);
   }
@@ -65,13 +74,13 @@ Card *get(size_t id) {
 }
 
 bool exists(const std::string &name) {
-  return registry.find(name) != registry.end();
+  return registry.find(to_lower(name)) != registry.end();
 }
 
 bool exists(size_t id) { return id < registry_vector.size(); }
 
 size_t get_id(const std::string &name) {
-  auto it = name_to_id.find(name);
+  auto it = name_to_id.find(to_lower(name));
   if (it == name_to_id.end()) {
     throw std::runtime_error("Card not found: " + name);
   }

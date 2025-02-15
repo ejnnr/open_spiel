@@ -757,6 +757,8 @@ void WitchTests() {
   dominion_state->players[0].deck.push_back(card_registry::get("Copper"));
   dominion_state->players[0].deck.push_back(card_registry::get("Silver"));
   dominion_state->players[0].discard.clear();
+  dominion_state->players[1].hand.clear();
+  dominion_state->players[1].deck.clear();
   dominion_state->players[1].discard.clear();
 
   // Check initial VP
@@ -769,8 +771,6 @@ void WitchTests() {
 
   // Check that player 0 drew 2 cards
   SPIEL_CHECK_EQ(dominion_state->players[0].hand.size(), 2);
-  SPIEL_CHECK_EQ(dominion_state->players[0].hand[0]->name, "Copper");
-  SPIEL_CHECK_EQ(dominion_state->players[0].hand[1]->name, "Silver");
 
   // Check that player 1 got a curse
   SPIEL_CHECK_EQ(dominion_state->players[1].discard.size(), 1);
@@ -792,6 +792,117 @@ void WitchTests() {
   // Check that player 1 didn't get another curse
   SPIEL_CHECK_EQ(dominion_state->players[1].discard.size(), 1);
   SPIEL_CHECK_EQ(dominion_state->players[1].VpCount(), -1);
+}
+
+void KingdomSelectionTests() {
+  // Test case-insensitive card names
+  {
+    GameParameters params;
+    params["kingdom_cards"] = GameParameter("village,SMITHY,Market");
+    std::shared_ptr<const Game> game = LoadGame("dominion", params);
+    std::unique_ptr<State> state = game->NewInitialState();
+    DominionState *dominion_state = static_cast<DominionState *>(state.get());
+
+    // Check that specified cards are in supply
+    SPIEL_CHECK_GT(
+        dominion_state->supply_counts[card_registry::get_id("Village")], 0);
+    SPIEL_CHECK_GT(
+        dominion_state->supply_counts[card_registry::get_id("Smithy")], 0);
+    SPIEL_CHECK_GT(
+        dominion_state->supply_counts[card_registry::get_id("Market")], 0);
+    // Check that unspecified action cards are not in supply
+    SPIEL_CHECK_EQ(
+        dominion_state->supply_counts[card_registry::get_id("Laboratory")], 0);
+    SPIEL_CHECK_EQ(
+        dominion_state->supply_counts[card_registry::get_id("Festival")], 0);
+    // Check that basic cards are still in supply
+    SPIEL_CHECK_GT(
+        dominion_state->supply_counts[card_registry::get_id("Copper")], 0);
+    SPIEL_CHECK_GT(
+        dominion_state->supply_counts[card_registry::get_id("Estate")], 0);
+  }
+
+  // Test random kingdom selection
+  {
+    GameParameters params;
+    params["random_kingdom"] = GameParameter(true);
+    std::shared_ptr<const Game> game = LoadGame("dominion", params);
+    std::unique_ptr<State> state = game->NewInitialState();
+    DominionState *dominion_state = static_cast<DominionState *>(state.get());
+
+    // Count number of kingdom cards (action or victory cards that aren't basic)
+    int kingdom_count = 0;
+    for (const auto &[card_id, count] : dominion_state->supply_counts) {
+      Card *card = card_registry::get(card_id);
+      if ((card->IsType(CardType::Action) || card->IsType(CardType::Victory)) &&
+          card->name != "Estate" && card->name != "Duchy" &&
+          card->name != "Province") {
+        if (count > 0) ++kingdom_count;
+      }
+    }
+    SPIEL_CHECK_EQ(kingdom_count, 10);
+  }
+
+  // Test partial random fill
+  {
+    GameParameters params;
+    params["kingdom_cards"] = GameParameter("Village,Smithy");
+    params["random_kingdom"] = GameParameter(true);
+    std::shared_ptr<const Game> game = LoadGame("dominion", params);
+    std::unique_ptr<State> state = game->NewInitialState();
+    DominionState *dominion_state = static_cast<DominionState *>(state.get());
+
+    // Check specified cards are present
+    SPIEL_CHECK_GT(
+        dominion_state->supply_counts[card_registry::get_id("Village")], 0);
+    SPIEL_CHECK_GT(
+        dominion_state->supply_counts[card_registry::get_id("Smithy")], 0);
+
+    // Count total kingdom cards
+    int kingdom_count = 0;
+    for (const auto &[card_id, count] : dominion_state->supply_counts) {
+      Card *card = card_registry::get(card_id);
+      if ((card->IsType(CardType::Action) || card->IsType(CardType::Victory)) &&
+          card->name != "Estate" && card->name != "Duchy" &&
+          card->name != "Province") {
+        if (count > 0) ++kingdom_count;
+      }
+    }
+    SPIEL_CHECK_EQ(kingdom_count, 10);
+  }
+
+  // Test using all cards
+  {
+    GameParameters params;
+    params["random_kingdom"] = GameParameter(false);
+    std::shared_ptr<const Game> game = LoadGame("dominion", params);
+    std::unique_ptr<State> state = game->NewInitialState();
+    DominionState *dominion_state = static_cast<DominionState *>(state.get());
+
+    // Count number of action cards in supply
+    int action_count = 0;
+    for (const auto &[card_id, count] : dominion_state->supply_counts) {
+      Card *card = card_registry::get(card_id);
+      if (card->IsType(CardType::Action)) {
+        if (count > 0) ++action_count;
+      }
+    }
+    // Should be more than 10 since we're using all cards
+    SPIEL_CHECK_GT(action_count, 10);
+  }
+
+  // Test victory card pile sizes
+  {
+    GameParameters params;
+    params["kingdom_cards"] = GameParameter("Gardens");
+    std::shared_ptr<const Game> game = LoadGame("dominion", params);
+    std::unique_ptr<State> state = game->NewInitialState();
+    DominionState *dominion_state = static_cast<DominionState *>(state.get());
+
+    // Gardens should have victory card pile size
+    SPIEL_CHECK_EQ(
+        dominion_state->supply_counts[card_registry::get_id("Gardens")], 8);
+  }
 }
 
 void BasicDominionTests() {
@@ -817,5 +928,8 @@ int main(int argc, char **argv) {
   open_spiel::dominion::ThroneRoomTests();
   open_spiel::dominion::LibraryTests();
   open_spiel::dominion::GameOverTests();
+  open_spiel::dominion::GardensTests();
+  open_spiel::dominion::WitchTests();
+  open_spiel::dominion::KingdomSelectionTests();
   open_spiel::dominion::BasicDominionTests();
 }

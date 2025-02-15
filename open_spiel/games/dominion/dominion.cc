@@ -30,27 +30,31 @@ namespace {
 constexpr int kDefaultPlayers = 2;
 
 // Facts about the game
-const GameType kGameType{/*short_name=*/"dominion",
-                         /*long_name=*/"Dominion",
-                         GameType::Dynamics::kSequential,
-                         GameType::ChanceMode::kExplicitStochastic,
-                         GameType::Information::kImperfectInformation,
-                         // TODO: only the two-player version is zero sum
-                         GameType::Utility::kZeroSum,
-                         GameType::RewardModel::kTerminal,
-                         // TODO: allow any number of players?
-                         /*max_num_players=*/kDefaultPlayers,
-                         /*min_num_players=*/kDefaultPlayers,
-                         /*provides_information_state_string=*/true,
-                         /*provides_information_state_tensor=*/false,
-                         /*provides_observation_string=*/false,
-                         /*provides_observation_tensor=*/false,
-                         /*parameter_specification=*/
-                         // TODO: update this
-                         {
-                             {"players", GameParameter(kDefaultPlayers)},
-                             {"small_supply", GameParameter(false)},
-                         }};
+const GameType kGameType{
+    /*short_name=*/"dominion",
+    /*long_name=*/"Dominion",
+    GameType::Dynamics::kSequential,
+    GameType::ChanceMode::kExplicitStochastic,
+    GameType::Information::kImperfectInformation,
+    // TODO: only the two-player version is zero sum
+    GameType::Utility::kZeroSum,
+    GameType::RewardModel::kTerminal,
+    // TODO: allow any number of players?
+    /*max_num_players=*/kDefaultPlayers,
+    /*min_num_players=*/kDefaultPlayers,
+    /*provides_information_state_string=*/true,
+    /*provides_information_state_tensor=*/false,
+    /*provides_observation_string=*/false,
+    /*provides_observation_tensor=*/false,
+    /*parameter_specification=*/
+    {
+        {"players", GameParameter(kDefaultPlayers)},
+        {"small_supply", GameParameter(false)},
+        // List of kingdom card names to use, empty means use all cards
+        {"kingdom_cards", GameParameter(std::string(""))},
+        // Whether to randomly select 10 kingdom cards if not enough specified
+        {"random_kingdom", GameParameter(false)},
+    }};
 
 std::shared_ptr<const Game> Factory(const GameParameters &params) {
   return std::shared_ptr<const Game>(new DominionGame(params, kGameType));
@@ -68,7 +72,6 @@ DominionState::DominionState(std::shared_ptr<const Game> game)
     : State(game),
       cur_player_(0),
       phase(Phase::Action),
-      supply_counts(card_registry::num_cards(), 0),
       players(),
       trash(),
       n_actions(0),
@@ -184,9 +187,10 @@ std::vector<Action> DominionState::LegalActions() const {
         actions.push_back(GetActionId(ActionType::kSelectHandCard, i));
     }
     if (n_buys > 0) {
-      for (size_t i = 0; i < supply_counts.size(); ++i) {
-        if (supply_counts[i] > 0 && card_registry::get(i)->cost <= n_coins)
-          actions.push_back(GetActionId(ActionType::kSelectSupplyCard, i));
+      for (const auto &[card_id, count] : supply_counts) {
+        if (count > 0 && card_registry::get(card_id)->cost <= n_coins)
+          actions.push_back(
+              GetActionId(ActionType::kSelectSupplyCard, card_id));
       }
     }
   }
@@ -206,8 +210,8 @@ std::string DominionState::InformationStateString(Player player) const {
      << ", " << n_actions << " actions, " << n_buys << " buys, " << n_coins
      << " coins" << std::endl;
   ss << "Supply: ";
-  for (size_t i = 0; i < supply_counts.size(); ++i) {
-    ss << supply_counts[i] << " " << card_registry::get(i)->name << ", ";
+  for (const auto &[card_id, count] : supply_counts) {
+    ss << count << " " << card_registry::get(card_id)->name << ", ";
   }
   ss << std::endl;
   ss << "Hand: ";
@@ -414,10 +418,10 @@ bool DominionState::IsTerminal() const {
 }
 
 bool DominionState::IsGameOver() const {
-  if (supply_counts[card_registry::get_id("Province")] == 0) return true;
+  if (supply_counts.at(card_registry::get_id("Province")) == 0) return true;
   // check for three pile ending
   int n_piles_empty = 0;
-  for (const auto count : supply_counts) {
+  for (const auto &[card_id, count] : supply_counts) {
     if (count == 0) ++n_piles_empty;
   }
   return n_piles_empty >= 3;
@@ -453,8 +457,14 @@ std::string DominionState::ToString() const {
      << ", " << n_actions << " actions, " << n_buys << " buys, " << n_coins
      << " coins" << std::endl;
   ss << "Supply: ";
-  for (size_t i = 0; i < supply_counts.size(); ++i) {
-    ss << supply_counts[i] << " " << card_registry::get(i)->name << ", ";
+  std::vector<std::pair<std::string, int>> sorted_supply;
+  for (const auto &[card_id, count] : supply_counts) {
+    sorted_supply.emplace_back(card_registry::get(card_id)->name, count);
+  }
+  std::sort(sorted_supply.begin(), sorted_supply.end(),
+            [](const auto &a, const auto &b) { return a.first < b.first; });
+  for (const auto &[name, count] : sorted_supply) {
+    ss << count << " " << name << ", ";
   }
   ss << std::endl;
   ss << "Hand: ";
@@ -475,6 +485,68 @@ DominionGame::DominionGame(const GameParameters &params, GameType game_type)
   SPIEL_CHECK_GE(num_players_, kGameType.min_num_players);
   SPIEL_CHECK_LE(num_players_, kGameType.max_num_players);
   card_registry::init();
+
+  // Parse kingdom cards parameter
+  std::string kingdom_cards_str = ParameterValue<std::string>("kingdom_cards");
+  if (!kingdom_cards_str.empty()) {
+    // Split string on commas
+    std::stringstream ss(kingdom_cards_str);
+    std::string card_name;
+    while (std::getline(ss, card_name, ',')) {
+      // Trim whitespace
+      card_name.erase(0, card_name.find_first_not_of(" \t\n\r\f\v"));
+      card_name.erase(card_name.find_last_not_of(" \t\n\r\f\v") + 1);
+      if (!card_registry::exists(card_name)) {
+        SpielFatalError("Invalid kingdom card: " + card_name);
+      }
+      kingdom_cards_.push_back(card_registry::get_id(card_name));
+    }
+  }
+
+  bool random_kingdom = ParameterValue<bool>("random_kingdom");
+  if (kingdom_cards_.empty() && !random_kingdom) {
+    // Use all cards except basic treasures and victory cards
+    for (size_t i = 0; i < card_registry::num_cards(); ++i) {
+      Card *card = card_registry::get(i);
+      if (card->IsType(CardType::Action) || card->IsType(CardType::Victory)) {
+        if (card->name != "Estate" && card->name != "Duchy" &&
+            card->name != "Province") {
+          kingdom_cards_.push_back(i);
+        }
+      }
+    }
+  } else if (random_kingdom && kingdom_cards_.size() < 10) {
+    // If random_kingdom is true and we don't have enough cards, randomly select
+    // more
+    std::vector<size_t> available_kingdom_cards;
+    for (size_t i = 0; i < card_registry::num_cards(); ++i) {
+      Card *card = card_registry::get(i);
+      if (card->IsType(CardType::Action) || card->IsType(CardType::Victory)) {
+        if (card->name != "Estate" && card->name != "Duchy" &&
+            card->name != "Province") {
+          // Only add if not already selected
+          if (std::find(kingdom_cards_.begin(), kingdom_cards_.end(), i) ==
+              kingdom_cards_.end()) {
+            available_kingdom_cards.push_back(i);
+          }
+        }
+      }
+    }
+
+    if (!available_kingdom_cards.empty()) {
+      // Shuffle available cards
+      std::random_device rd;
+      std::mt19937 gen(rd());
+      std::shuffle(available_kingdom_cards.begin(),
+                   available_kingdom_cards.end(), gen);
+
+      // Add random cards until we have 10
+      while (kingdom_cards_.size() < 10 && !available_kingdom_cards.empty()) {
+        kingdom_cards_.push_back(available_kingdom_cards.back());
+        available_kingdom_cards.pop_back();
+      }
+    }
+  }
 }
 
 int DominionGame::NumDistinctActions() const { return 300; }
@@ -488,6 +560,8 @@ std::unique_ptr<State> DominionGame::NewInitialState() const {
   // cards
   // small_supply is a parameter to speed up random playthroughs in testing
   bool small_supply = ParameterValue<bool>("small_supply");
+
+  // Initialize basic cards
   state->supply_counts[card_registry::get_id("Copper")] =
       small_supply ? 10 : 60;
   state->supply_counts[card_registry::get_id("Silver")] =
@@ -500,11 +574,14 @@ std::unique_ptr<State> DominionGame::NewInitialState() const {
   state->supply_counts[card_registry::get_id("Curse")] =
       small_supply ? 5
                    : (num_players_ == 2 ? 10 : (num_players_ == 3 ? 20 : 30));
-  state->supply_counts[card_registry::get_id("Gardens")] = small_supply ? 4 : 8;
 
-  for (size_t i = 0; i < card_registry::num_cards(); ++i) {
-    if (card_registry::get(i)->IsType(CardType::Action))
-      state->supply_counts[i] = small_supply ? 5 : 10;
+  // Initialize kingdom cards
+  for (size_t card_id : kingdom_cards_) {
+    if (card_registry::get(card_id)->IsType(CardType::Victory)) {
+      state->supply_counts[card_id] = small_supply ? 4 : 8;
+    } else {
+      state->supply_counts[card_id] = small_supply ? 5 : 10;
+    }
   }
 
   state->ResetCounters();
@@ -531,8 +608,9 @@ std::string DominionState::Serialize() const {
      << n_coins << " " << turn << " " << cur_player_ << "\n";
 
   // Supply counts
-  for (int count : supply_counts) {
-    ss << count << " ";
+  ss << supply_counts.size() << "\n";
+  for (const auto &[card_id, count] : supply_counts) {
+    ss << card_id << " " << count << " ";
   }
   ss << "\n";
 
@@ -577,9 +655,15 @@ std::unique_ptr<State> DominionGame::DeserializeState(
   state->phase = static_cast<Phase>(phase_int);
 
   // Supply counts
-  state->supply_counts.resize(card_registry::num_cards());
-  for (int &count : state->supply_counts) {
-    ss >> count;
+  size_t supply_size;
+  ss >> supply_size;
+  state->supply_counts.clear();
+  state->supply_counts.reserve(supply_size);
+  for (size_t i = 0; i < supply_size; ++i) {
+    size_t card_id;
+    int count;
+    ss >> card_id >> count;
+    state->supply_counts[card_id] = count;
   }
 
   // Trash pile

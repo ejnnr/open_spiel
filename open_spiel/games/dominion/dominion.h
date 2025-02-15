@@ -20,6 +20,7 @@
 #include <memory>
 #include <random>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "open_spiel/games/dominion/effects.h"
@@ -139,7 +140,7 @@ class DominionState : public State {
 
   // Initialized to invalid values. Use Game::NewInitialState().
   Phase phase;
-  std::vector<int> supply_counts;
+  std::unordered_map<size_t, int> supply_counts;
   std::vector<PlayerState> players;
   std::vector<Card *> trash;
   int n_actions;
@@ -178,6 +179,8 @@ class DominionGame : public Game {
  private:
   // Number of players.
   int num_players_;
+  // IDs of kingdom cards to use in the game
+  std::vector<size_t> kingdom_cards_;
 };
 }  // namespace dominion
 }  // namespace open_spiel
