@@ -412,6 +412,68 @@ void GameOverTests() {
   SPIEL_CHECK_TRUE(dominion_state->IsGameOver());
 }
 
+void LibraryTests() {
+  GameParameters params;
+  std::shared_ptr<const Game> game = LoadGame("dominion", params);
+  std::unique_ptr<State> state = game->NewInitialState();
+  DominionState *dominion_state = static_cast<DominionState *>(state.get());
+
+  // Set up initial state
+  dominion_state->SampleAllChanceNodes();
+  dominion_state->players[0].hand.clear();
+  dominion_state->players[0].hand.push_back(card_registry::get("Library"));
+  dominion_state->players[0].deck.clear();
+  dominion_state->players[0].deck.push_back(
+      card_registry::get("Village"));  // Action
+  dominion_state->players[0].deck.push_back(
+      card_registry::get("Copper"));  // Non-action
+  dominion_state->players[0].deck.push_back(
+      card_registry::get("Market"));  // Action
+  dominion_state->players[0].deck.push_back(
+      card_registry::get("Silver"));  // Non-action
+  dominion_state->players[0].discard.clear();
+
+  // Play Library
+  dominion_state->PlayCard(0);
+
+  // Should be in chance state for first draw
+  SPIEL_CHECK_TRUE(dominion_state->IsChanceNode());
+  dominion_state->ApplyAction(0);  // Draw Village
+
+  // Should be in decision state for whether to set aside Village
+  SPIEL_CHECK_FALSE(dominion_state->IsChanceNode());
+  SPIEL_CHECK_EQ(dominion_state->CurrentPlayer(), 0);
+  std::vector<Action> legal_actions = dominion_state->LegalActions();
+  SPIEL_CHECK_EQ(legal_actions.size(), 2);  // Keep (0) or set aside (1)
+
+  // Choose to set aside Village
+  dominion_state->ApplyAction(1);
+  // Check that card isn't discarded immediately (which would lead to incorrect
+  // shuffle behavior)
+  SPIEL_CHECK_EQ(dominion_state->players[0].discard.size(), 0);
+
+  // Draw Copper (non-action, automatically kept)
+  SPIEL_CHECK_TRUE(dominion_state->IsChanceNode());
+  dominion_state->ApplyAction(0);
+
+  // Draw Market
+  SPIEL_CHECK_TRUE(dominion_state->IsChanceNode());
+  dominion_state->ApplyAction(0);
+
+  // Choose to keep Market
+  dominion_state->ApplyAction(0);
+
+  // Draw Silver (non-action, automatically kept)
+  SPIEL_CHECK_TRUE(dominion_state->IsChanceNode());
+  dominion_state->ApplyAction(0);
+
+  // Verify final state
+  // Copper, Market, Silver:
+  SPIEL_CHECK_EQ(dominion_state->players[0].hand.size(), 3);
+  SPIEL_CHECK_EQ(dominion_state->players[0].discard.size(), 1);  // Village
+  SPIEL_CHECK_EQ(dominion_state->players[0].discard[0]->name, "Village");
+}
+
 void CellarTests() {
   GameParameters params;
   std::shared_ptr<const Game> game = LoadGame("dominion", params);
@@ -694,6 +756,7 @@ int main(int argc, char **argv) {
   open_spiel::dominion::MoneylenderTests();
   open_spiel::dominion::RemodelTests();
   open_spiel::dominion::ThroneRoomTests();
+  open_spiel::dominion::LibraryTests();
   open_spiel::dominion::GameOverTests();
   open_spiel::dominion::BasicDominionTests();
 }

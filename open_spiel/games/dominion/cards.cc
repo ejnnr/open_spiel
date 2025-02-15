@@ -208,5 +208,26 @@ int Gardens::GetVictoryPoints(const PlayerState &player_state) const {
   return total_cards / 10;
 }
 
+Coroutine Library::Play(DominionState &state) const {
+  std::vector<Card *> set_aside_cards{};
+  while (state.CurrentHand().size() < 7 &&
+         !(state.CurrentDeck().empty() && state.CurrentDiscard().empty())) {
+    co_await state.DrawCard(1);
+    Card *card = state.CurrentPlayerState().hand.back();
+    if (card->IsAction()) {
+      // 0: keep card, 1: set aside
+      Action action = co_await getAction(state, {0, 1});
+      if (action == 1) {
+        set_aside_cards.push_back(card);
+        state.CurrentPlayerState().hand.pop_back();
+      }
+    }
+  }
+  for (Card *card : set_aside_cards) {
+    state.CurrentDiscard().push_back(card);
+  }
+  co_return;
+}
+
 }  // namespace dominion
 }  // namespace open_spiel
