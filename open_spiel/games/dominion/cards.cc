@@ -81,13 +81,7 @@ Coroutine Workshop::Play(DominionState &state) const {
 
   DominionAction action = co_await getDominionAction(state, legal_actions);
   SPIEL_CHECK_EQ(action.type, ActionType::kSelectSupplyCard);
-  SPIEL_CHECK_GE(action.index, 0);
-  SPIEL_CHECK_LT(action.index, state.supply_counts.size());
-  if (state.supply_counts[action.index] > 0) {
-    state.supply_counts[action.index] -= 1;
-    state.players[state.cur_player_].discard.push_back(
-        card_registry::get(action.index));
-  }
+  state.GainCard(action.index);
   co_return;
 }
 
@@ -172,7 +166,7 @@ Coroutine Remodel::Play(DominionState &state) const {
 
   DominionAction supply_action =
       co_await getDominionAction(state, supply_choices);
-  state.CurrentDiscard().push_back(card_registry::get(supply_action.index));
+  state.GainCard(supply_action.index);
 }
 
 Coroutine ThroneRoom::Play(DominionState &state) const {
@@ -238,10 +232,7 @@ Coroutine Witch::Play(DominionState &state) const {
     if (i != state.cur_player_) {
       // Find curse pile index
       size_t curse_id = card_registry::get_id("Curse");
-      if (state.supply_counts[curse_id] > 0) {
-        state.supply_counts[curse_id]--;
-        state.players[i].discard.push_back(card_registry::get(curse_id));
-      }
+      state.GainCard(curse_id, i);
     }
   }
   co_return;

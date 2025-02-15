@@ -342,6 +342,18 @@ void DominionState::DiscardFromHand(std::vector<Card *>::iterator it) {
   CurrentHand().erase(it);
 }
 
+bool DominionState::GainCard(size_t card_index, Player player_id) {
+  if (card_index >= supply_counts.size())
+    throw std::runtime_error("Invalid card index");
+  if (supply_counts[card_index] < 1) return false;
+
+  if (player_id == -1) player_id = cur_player_;
+
+  --supply_counts[card_index];
+  players[player_id].discard.push_back(card_registry::get(card_index));
+  return true;
+}
+
 std::vector<Card *> &DominionState::CurrentDeck() {
   return CurrentPlayerState().deck;
 }
@@ -392,8 +404,8 @@ void DominionState::Buy(size_t card_index) {
                              std::to_string(n_coins) + " coins are available");
   n_coins -= card->cost;
   --n_buys;
-  --supply_counts[card_index];
-  CurrentDiscard().push_back(card);
+  if (!GainCard(card_index))
+    throw std::runtime_error("Failed to gain card (this shouldn't happen)");
 }
 
 bool DominionState::IsTerminal() const {

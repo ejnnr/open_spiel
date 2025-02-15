@@ -120,6 +120,11 @@ class DominionState : public State {
   void DiscardFromHand(size_t hand_index);
   void DiscardFromHand(std::vector<Card *>::iterator it);
 
+  // Gain a card from the supply to the specified player's discard pile.
+  // Returns true if the card was gained, false if it wasn't available.
+  // Throws if the card_index is invalid.
+  bool GainCard(size_t card_index, Player player_id = -1);
+
   // Convenience aliases
   std::vector<Card *> &CurrentDeck();
   const std::vector<Card *> &CurrentDeck() const;

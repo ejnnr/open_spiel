@@ -648,8 +648,13 @@ void RemodelTests() {
     SPIEL_CHECK_LE(card_registry::get(choice.index)->cost, 4);
   }
 
+  // Get initial supply count for Silver
+  size_t silver_id = card_registry::get_id("Silver");
+  int initial_silver_count = dominion_state->supply_counts[silver_id];
+
   // Choose Silver to gain (costs 3)
-  dominion_state->ApplyAction(GetActionId(ActionType::kSelectSupplyCard, 1));
+  dominion_state->ApplyAction(
+      GetActionId(ActionType::kSelectSupplyCard, silver_id));
 
   // Verify Estate was trashed
   SPIEL_CHECK_EQ(dominion_state->trash.size(), 1);
@@ -658,6 +663,9 @@ void RemodelTests() {
   // Verify Silver was gained
   SPIEL_CHECK_EQ(dominion_state->players[0].discard.size(), 1);
   SPIEL_CHECK_EQ(dominion_state->players[0].discard[0]->name, "Silver");
+  // Verify supply count was decreased
+  SPIEL_CHECK_EQ(dominion_state->supply_counts[silver_id],
+                 initial_silver_count - 1);
 
   // Test playing with empty hand
   dominion_state->n_actions = 1;
