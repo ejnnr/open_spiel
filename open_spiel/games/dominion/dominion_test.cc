@@ -885,6 +885,36 @@ void KingdomSelectionTests() {
   }
 }
 
+void KnownCardPositionTests() {
+  GameParameters params;
+  std::shared_ptr<const Game> game = LoadGame("dominion");
+  std::unique_ptr<State> state = game->NewInitialState();
+  DominionState *dominion_state = static_cast<DominionState *>(state.get());
+
+  dominion_state->SampleAllChanceNodes();
+  auto &player = dominion_state->players[0];
+  player.ClearAll();
+  player.deck.push_back(card_registry::get("Copper"));
+  player.deck.push_back(std::nullopt);
+  player.unknown_cards = {card_registry::get("Estate")};
+
+  // First draw should be chance node since we don't know top card
+  // (well, in this case we do because there's only one unknown card, but that's
+  // not implemented as a special case)
+  dominion_state->DrawCardForPlayer(1, 0);
+  SPIEL_CHECK_TRUE(dominion_state->IsChanceNode());
+
+  // Draw the top card
+  dominion_state->ApplyAction(0);
+  SPIEL_CHECK_EQ(player.hand.back()->name, "Estate");
+  SPIEL_CHECK_FALSE(dominion_state->IsChanceNode());
+
+  // Second draw should NOT be chance node since we know the card
+  dominion_state->DrawCardForPlayer(1, 0);
+  SPIEL_CHECK_FALSE(dominion_state->IsChanceNode());
+  SPIEL_CHECK_EQ(player.hand.back()->name, "Copper");
+}
+
 void BasicDominionTests() {
   testing::LoadGameTest("dominion");
   std::shared_ptr<const Game> game = LoadGame("dominion(small_supply=true)");
