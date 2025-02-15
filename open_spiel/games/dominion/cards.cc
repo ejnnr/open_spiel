@@ -8,6 +8,43 @@
 namespace open_spiel {
 namespace dominion {
 
+Coroutine<std::optional<size_t>> SelectSupplyCard(DominionState &state,
+                                                  bool allow_none) {
+  return SelectSupplyCard(state, std::numeric_limits<int>::max(), allow_none);
+}
+
+Coroutine<std::optional<size_t>> SelectSupplyCard(DominionState &state,
+                                                  int max_cost,
+                                                  bool allow_none) {
+  std::vector<Action> legal_actions;
+  if (allow_none) legal_actions.push_back(GetActionId(ActionType::kEnd));
+  for (const auto &[card_id, count] : state.supply_counts) {
+    if (count > 0 && card_registry::get(card_id)->cost <= max_cost) {
+      legal_actions.push_back(
+          GetActionId(ActionType::kSelectSupplyCard, card_id));
+    }
+  }
+  if (legal_actions.empty()) co_return std::nullopt;
+  // open_spiel requires actions to be sorted, and our supply might not be
+  std::sort(legal_actions.begin(), legal_actions.end());
+  DominionAction action = co_await getDominionAction(state, legal_actions);
+  if (action.type == ActionType::kEnd) co_return std::nullopt;
+  co_return action.index;
+}
+
+Coroutine<std::optional<size_t>> SelectHandCard(DominionState &state,
+                                                bool allow_none) {
+  std::vector<Action> legal_actions;
+  if (allow_none) legal_actions.push_back(GetActionId(ActionType::kEnd));
+  for (size_t i = 0; i < state.CurrentHand().size(); ++i) {
+    legal_actions.push_back(GetActionId(ActionType::kSelectHandCard, i));
+  }
+  if (legal_actions.empty()) co_return std::nullopt;
+  DominionAction action = co_await getDominionAction(state, legal_actions);
+  if (action.type == ActionType::kEnd) co_return std::nullopt;
+  co_return action.index;
+}
+
 bool Card::IsType(CardType type) const {
   return card_types.find(type) != card_types.end();
 }
@@ -18,29 +55,29 @@ bool Card::IsPlayable() const {
   return false;
 }
 
-Coroutine BasicTreasure::Play(DominionState &state) const {
+Coroutine<void> BasicTreasure::Play(DominionState &state) const {
   state.n_coins += value;
   co_return;
 }
 
-Coroutine Village::Play(DominionState &state) const {
+Coroutine<void> Village::Play(DominionState &state) const {
   co_await state.DrawCard(1);
   state.n_actions += 2;
   co_return;
 }
 
-Coroutine Woodcutter::Play(DominionState &state) const {
+Coroutine<void> Woodcutter::Play(DominionState &state) const {
   state.n_buys += 1;
   state.n_coins += 2;
   co_return;
 }
 
-Coroutine Smithy::Play(DominionState &state) const {
+Coroutine<void> Smithy::Play(DominionState &state) const {
   co_await state.DrawCard(3);
   co_return;
 }
 
-Coroutine Market::Play(DominionState &state) const {
+Coroutine<void> Market::Play(DominionState &state) const {
   co_await state.DrawCard(1);
   state.n_actions += 1;
   state.n_coins += 1;
@@ -48,20 +85,20 @@ Coroutine Market::Play(DominionState &state) const {
   co_return;
 }
 
-Coroutine Festival::Play(DominionState &state) const {
+Coroutine<void> Festival::Play(DominionState &state) const {
   state.n_actions += 2;
   state.n_buys += 1;
   state.n_coins += 2;
   co_return;
 }
 
-Coroutine Laboratory::Play(DominionState &state) const {
+Coroutine<void> Laboratory::Play(DominionState &state) const {
   co_await state.DrawCard(2);
   state.n_actions += 1;
   co_return;
 }
 
-Coroutine CouncilRoom::Play(DominionState &state) const {
+Coroutine<void> CouncilRoom::Play(DominionState &state) const {
   co_await state.DrawCard(4);
   state.n_buys += 1;
   for (size_t i = 0; i < state.players.size(); ++i) {
@@ -70,54 +107,30 @@ Coroutine CouncilRoom::Play(DominionState &state) const {
   co_return;
 }
 
-Coroutine Workshop::Play(DominionState &state) const {
-  std::vector<Action> legal_actions;
-  for (size_t i = 0; i < state.supply_counts.size(); ++i) {
-    if (state.supply_counts[i] > 0 && card_registry::get(i)->cost <= 4) {
-      legal_actions.push_back(GetActionId(ActionType::kSelectSupplyCard, i));
-    }
-  }
-  if (legal_actions.empty()) co_return;
-
-  DominionAction action = co_await getDominionAction(state, legal_actions);
-  SPIEL_CHECK_EQ(action.type, ActionType::kSelectSupplyCard);
-  state.GainCard(action.index);
+Coroutine<void> Workshop::Play(DominionState &state) const {
+  std::optional<size_t> supply_card = co_await SelectSupplyCard(state, 4);
+  if (!supply_card) co_return;
+  state.GainCard(supply_card.value());
   co_return;
 }
 
-Coroutine Chapel::Play(DominionState &state) const {
+Coroutine<void> Chapel::Play(DominionState &state) const {
   for (int i = 0; i < 4; ++i) {
-    std::vector<Action> hand_choices(state.CurrentHand().size());
-    std::iota(hand_choices.begin(), hand_choices.end(), 0);
-    std::vector<Action> actions;
-    actions.reserve(hand_choices.size() + 1);
-    actions.push_back(0);
-    for (Action hand_choice : hand_choices) {
-      actions.push_back(GetActionId(ActionType::kSelectHandCard, hand_choice));
-    }
-    DominionAction action = co_await getDominionAction(state, actions);
-    if (action.type == ActionType::kEnd) break;
-    state.TrashFromHand(action.index);
+    std::optional<size_t> hand_card = co_await SelectHandCard(state, true);
+    if (!hand_card) co_return;
+    state.TrashFromHand(hand_card.value());
   }
   co_return;
 }
 
-Coroutine Cellar::Play(DominionState &state) const {
+Coroutine<void> Cellar::Play(DominionState &state) const {
   state.n_actions += 1;
 
   int cards_discarded = 0;
   while (true) {
-    std::vector<Action> hand_choices(state.CurrentHand().size());
-    std::iota(hand_choices.begin(), hand_choices.end(), 0);
-    std::vector<Action> actions;
-    actions.reserve(hand_choices.size() + 1);
-    actions.push_back(0);  // End action
-    for (Action hand_choice : hand_choices) {
-      actions.push_back(GetActionId(ActionType::kSelectHandCard, hand_choice));
-    }
-    DominionAction action = co_await getDominionAction(state, actions);
-    if (action.type == ActionType::kEnd) break;
-    state.DiscardFromHand(action.index);
+    std::optional<size_t> hand_card = co_await SelectHandCard(state, true);
+    if (!hand_card) break;
+    state.DiscardFromHand(hand_card.value());
     cards_discarded++;
   }
 
@@ -125,7 +138,7 @@ Coroutine Cellar::Play(DominionState &state) const {
   co_return;
 }
 
-Coroutine Moneylender::Play(DominionState &state) const {
+Coroutine<void> Moneylender::Play(DominionState &state) const {
   // find Copper in hand
   auto copper_it =
       std::find_if(state.CurrentHand().begin(), state.CurrentHand().end(),
@@ -144,32 +157,21 @@ Coroutine Moneylender::Play(DominionState &state) const {
   co_return;
 }
 
-Coroutine Remodel::Play(DominionState &state) const {
+Coroutine<void> Remodel::Play(DominionState &state) const {
   if (state.CurrentHand().size() == 0) co_return;
 
-  std::vector<Action> legal_actions;
-  legal_actions.reserve(state.CurrentHand().size());
-  for (size_t i = 0; i < state.CurrentHand().size(); ++i) {
-    legal_actions.push_back(GetActionId(ActionType::kSelectHandCard, i));
-  }
+  std::optional<size_t> hand_card = co_await SelectHandCard(state, false);
+  if (!hand_card) co_return;
+  int cost = state.CurrentHand()[hand_card.value()]->cost;
+  state.TrashFromHand(hand_card.value());
 
-  DominionAction action = co_await getDominionAction(state, legal_actions);
-  state.TrashFromHand(action.index);
-
-  std::vector<Action> supply_choices{};
-  for (size_t i = 0; i < state.supply_counts.size(); ++i) {
-    if (state.supply_counts[i] > 0 && card_registry::get(i)->cost <= 4) {
-      supply_choices.push_back(GetActionId(ActionType::kSelectSupplyCard, i));
-    }
-  }
-  if (supply_choices.empty()) co_return;
-
-  DominionAction supply_action =
-      co_await getDominionAction(state, supply_choices);
-  state.GainCard(supply_action.index);
+  std::optional<size_t> supply_card =
+      co_await SelectSupplyCard(state, cost + 2);
+  if (!supply_card) co_return;
+  state.GainCard(supply_card.value());
 }
 
-Coroutine ThroneRoom::Play(DominionState &state) const {
+Coroutine<void> ThroneRoom::Play(DominionState &state) const {
   std::vector<Action> legal_actions{};
   legal_actions.push_back(GetActionId(ActionType::kEnd));
   for (size_t i = 0; i < state.CurrentHand().size(); ++i) {
@@ -177,20 +179,21 @@ Coroutine ThroneRoom::Play(DominionState &state) const {
       legal_actions.push_back(GetActionId(ActionType::kSelectHandCard, i));
   }
 
-  // Only kEnd available, so can just skip instead of pointlessly awaiting that
+  // Only kEnd available, so can just skip instead of pointlessly awaiting
+  // that
   if (legal_actions.size() == 1) co_return;
 
   DominionAction action = co_await getDominionAction(state, legal_actions);
   if (action.type == ActionType::kEnd) co_return;
 
-  // Note: we don't want to use DominionState::PlayCard here, because that costs
-  // an action (and we can't use it the second time anyway because the card
-  // won't be in hand).
+  // Note: we don't want to use DominionState::PlayCard here, because that
+  // costs an action (and we can't use it the second time anyway because the
+  // card won't be in hand).
 
   // First, use PlayerState::PlayCard to put the card in the playing area
   Card &card = state.CurrentPlayerState().PlayCard(action.index);
-  // Then, execute the card's effect twice. We need to co_await to make sure we
-  // finish the first effect before starting the second.
+  // Then, execute the card's effect twice. We need to co_await to make sure
+  // we finish the first effect before starting the second.
   co_await card.Play(state);
   co_await card.Play(state);
 }
@@ -202,7 +205,7 @@ int Gardens::GetVictoryPoints(const PlayerState &player_state) const {
   return total_cards / 10;
 }
 
-Coroutine Library::Play(DominionState &state) const {
+Coroutine<void> Library::Play(DominionState &state) const {
   std::vector<Card *> set_aside_cards{};
   while (state.CurrentHand().size() < 7 &&
          !(state.CurrentDeck().empty() && state.CurrentDiscard().empty())) {
@@ -223,7 +226,7 @@ Coroutine Library::Play(DominionState &state) const {
   co_return;
 }
 
-Coroutine Witch::Play(DominionState &state) const {
+Coroutine<void> Witch::Play(DominionState &state) const {
   // First draw 2 cards
   co_await state.DrawCard(2);
 

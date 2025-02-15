@@ -286,7 +286,7 @@ void DominionState::PlayCard(size_t hand_index) {
   card.Play(*this);
 }
 
-Coroutine DominionState::DrawCardForPlayer(int n, Player player_id) {
+Coroutine<void> DominionState::DrawCardForPlayer(int n, Player player_id) {
   PlayerState &player = players[player_id];
   for (int i = 0; i < n; ++i) {
     if (player.deck.empty() && !player.discard.empty()) {
@@ -319,7 +319,7 @@ Coroutine DominionState::DrawCardForPlayer(int n, Player player_id) {
   co_return;
 }
 
-Coroutine DominionState::DrawHandForAllPlayers() {
+Coroutine<void> DominionState::DrawHandForAllPlayers() {
   for (Player player_id = 0; player_id < num_players_; ++player_id) {
     co_await DrawCardForPlayer(5, player_id);
   }
@@ -427,7 +427,7 @@ bool DominionState::IsGameOver() const {
   return n_piles_empty >= 3;
 }
 
-Coroutine DominionState::NextPhase() {
+Coroutine<void> DominionState::NextPhase() {
   if (phase == Phase::Action) {
     phase = Phase::Buy;
   } else if (phase == Phase::Buy) {

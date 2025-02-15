@@ -108,14 +108,14 @@ class DominionState : public State {
 
   // Additional helper functions
   void PlayCard(size_t hand_index);
-  Coroutine DrawCardForPlayer(int n, Player player_id);
-  Coroutine DrawCard(int n) { return DrawCardForPlayer(n, cur_player_); };
+  Coroutine<void> DrawCardForPlayer(int n, Player player_id);
+  Coroutine<void> DrawCard(int n) { return DrawCardForPlayer(n, cur_player_); };
   void Buy(size_t card_index);
-  Coroutine NextPhase();
+  Coroutine<void> NextPhase();
   void ResetCounters();
   bool IsGameOver() const;
   void SampleAllChanceNodes();
-  Coroutine DrawHandForAllPlayers();
+  Coroutine<void> DrawHandForAllPlayers();
   void TrashFromHand(size_t hand_index);
   void TrashFromHand(std::vector<Card *>::iterator it);
   void DiscardFromHand(size_t hand_index);

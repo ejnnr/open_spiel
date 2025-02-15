@@ -16,13 +16,21 @@ enum class CardType {
   Action,
 };
 
+Coroutine<std::optional<size_t>> SelectSupplyCard(DominionState &state,
+                                                  bool allow_none = false);
+Coroutine<std::optional<size_t>> SelectSupplyCard(DominionState &state,
+                                                  int max_cost,
+                                                  bool allow_none = false);
+Coroutine<std::optional<size_t>> SelectHandCard(DominionState &state,
+                                                bool allow_none = false);
+
 class Card {
  public:
   const std::set<CardType> card_types;
   const int cost;
   const std::string name;
 
-  virtual Coroutine Play(DominionState &state) const {};
+  virtual Coroutine<void> Play(DominionState &state) const { co_return; }
   virtual int GetVictoryPoints(const PlayerState &player_state) const {
     return 0;
   }
@@ -41,91 +49,91 @@ class Card {
 class Village : public Card {
  public:
   Village() : Card{{CardType::Action}, 3, "Village"} {}
-  Coroutine Play(DominionState &state) const override;
+  Coroutine<void> Play(DominionState &state) const override;
 };
 
 class Woodcutter : public Card {
  public:
   Woodcutter() : Card{{CardType::Action}, 3, "Woodcutter"} {}
-  Coroutine Play(DominionState &state) const override;
+  Coroutine<void> Play(DominionState &state) const override;
 };
 
 class Smithy : public Card {
  public:
   Smithy() : Card{{CardType::Action}, 4, "Smithy"} {}
-  Coroutine Play(DominionState &state) const override;
+  Coroutine<void> Play(DominionState &state) const override;
 };
 
 class Market : public Card {
  public:
   Market() : Card{{CardType::Action}, 5, "Market"} {}
-  Coroutine Play(DominionState &state) const override;
+  Coroutine<void> Play(DominionState &state) const override;
 };
 
 class Festival : public Card {
  public:
   Festival() : Card{{CardType::Action}, 5, "Festival"} {}
-  Coroutine Play(DominionState &state) const override;
+  Coroutine<void> Play(DominionState &state) const override;
 };
 
 class Laboratory : public Card {
  public:
   Laboratory() : Card{{CardType::Action}, 5, "Laboratory"} {}
-  Coroutine Play(DominionState &state) const override;
+  Coroutine<void> Play(DominionState &state) const override;
 };
 
 class CouncilRoom : public Card {
  public:
   CouncilRoom() : Card{{CardType::Action}, 5, "Council Room"} {}
-  Coroutine Play(DominionState &state) const override;
+  Coroutine<void> Play(DominionState &state) const override;
 };
 
 class Workshop : public Card {
  public:
   Workshop() : Card{{CardType::Action}, 3, "Workshop"} {}
-  Coroutine Play(DominionState &state) const override;
+  Coroutine<void> Play(DominionState &state) const override;
 };
 
 class Chapel : public Card {
  public:
   Chapel() : Card{{CardType::Action}, 2, "Chapel"} {}
-  Coroutine Play(DominionState &state) const override;
+  Coroutine<void> Play(DominionState &state) const override;
 };
 
 class Moneylender : public Card {
  public:
   Moneylender() : Card{{CardType::Action}, 4, "Moneylender"} {}
-  Coroutine Play(DominionState &state) const override;
+  Coroutine<void> Play(DominionState &state) const override;
 };
 
 class Remodel : public Card {
  public:
   Remodel() : Card{{CardType::Action}, 4, "Remodel"} {}
-  Coroutine Play(DominionState &state) const override;
+  Coroutine<void> Play(DominionState &state) const override;
 };
 
 class ThroneRoom : public Card {
  public:
   ThroneRoom() : Card{{CardType::Action}, 4, "Throne Room"} {}
-  Coroutine Play(DominionState &state) const override;
+  Coroutine<void> Play(DominionState &state) const override;
 };
 
 class Library : public Card {
  public:
   Library() : Card{{CardType::Action}, 5, "Library"} {}
-  Coroutine Play(DominionState &state) const override;
+  Coroutine<void> Play(DominionState &state) const override;
 };
 
 class Witch : public Card {
  public:
   Witch() : Card{{CardType::Action}, 5, "Witch"} {}
-  Coroutine Play(DominionState &state) const override;
+  Coroutine<void> Play(DominionState &state) const override;
 };
 
 class Artisan : public Card {
  public:
   Artisan() : Card{{CardType::Action}, 6, "Artisan"} {}
-  Coroutine Play(DominionState &state) const override;
+  Coroutine<void> Play(DominionState &state) const override;
 };
 
 class Gardens : public Card {
@@ -138,7 +146,7 @@ class BasicTreasure : public Card {
  public:
   BasicTreasure(int cost, int value, const std::string &name)
       : Card{{CardType::Treasure}, cost, name}, value{value} {}
-  Coroutine Play(DominionState &state) const override;
+  Coroutine<void> Play(DominionState &state) const override;
 
  private:
   int value;
@@ -198,7 +206,7 @@ class Curse : public Card {
 class Cellar : public Card {
  public:
   Cellar() : Card{{CardType::Action}, 2, "Cellar"} {}
-  Coroutine Play(DominionState &state) const override;
+  Coroutine<void> Play(DominionState &state) const override;
 };
 }  // namespace dominion
 }  // namespace open_spiel
