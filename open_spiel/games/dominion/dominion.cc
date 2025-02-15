@@ -290,30 +290,41 @@ Coroutine<void> DominionState::DrawCardForPlayer(int n, Player player_id) {
   PlayerState &player = players[player_id];
   for (int i = 0; i < n; ++i) {
     if (player.deck.empty() && !player.discard.empty()) {
-      std::swap(player.deck, player.discard);
+      // When shuffling, all cards become unknown
+      std::swap(player.unknown_cards, player.discard);
+      player.deck.resize(player.unknown_cards.size(), std::nullopt);
     }
     if (!player.deck.empty()) {
-      // Draw a random card. This creates a chance node, so need to await an
-      // action before actually drawing the card.
-      // The legal actions are the indices of the cards in the deck.
-      pending_legal_actions = std::vector<Action>(player.deck.size());
-      std::iota(pending_legal_actions->begin(), pending_legal_actions->end(),
-                0);
-      pending_draw = true;
-      // TODO: a bit weird that we're passing in pending_legal_actions, which in
-      // this case will just be copied into itself
-      auto action =
-          co_await ActionAwaiter{*this, pending_legal_actions.value()};
-      pending_draw = false;
-      SPIEL_CHECK_GE(action, 0);
-      SPIEL_CHECK_LT(action, player.deck.size());
+      // If top card is known, draw it directly
+      if (player.deck.back().has_value()) {
+        player.hand.push_back(*player.deck.back());
+        player.deck.pop_back();
+      } else {
+        // Draw a random card. This creates a chance node, so need to await an
+        // action before actually drawing the card.
+        // The legal actions are the indices into unknown_cards
+        pending_legal_actions =
+            std::vector<Action>(player.unknown_cards.size());
+        std::iota(pending_legal_actions->begin(), pending_legal_actions->end(),
+                  0);
+        pending_draw = true;
+        // TODO: a bit weird that we're passing in pending_legal_actions, which
+        // in this case will just be copied into itself
+        auto action =
+            co_await ActionAwaiter{*this, pending_legal_actions.value()};
+        pending_draw = false;
+        SPIEL_CHECK_GE(action, 0);
+        SPIEL_CHECK_LT(action, player.unknown_cards.size());
 
-      // Draw the card
-      if (action != player.deck.size() - 1) {
-        std::swap(player.deck[action], player.deck.back());
+        // Draw the selected card
+        Card *drawn_card = player.unknown_cards[action];
+        if (action != player.unknown_cards.size() - 1) {
+          std::swap(player.unknown_cards[action], player.unknown_cards.back());
+        }
+        player.unknown_cards.pop_back();
+        player.hand.push_back(drawn_card);
+        player.deck.pop_back();
       }
-      player.hand.push_back(player.deck.back());
-      player.deck.pop_back();
     }
   }
   co_return;
@@ -358,11 +369,11 @@ bool DominionState::GainCard(size_t card_index, Player player_id) {
   return true;
 }
 
-std::vector<Card *> &DominionState::CurrentDeck() {
+std::vector<std::optional<Card *>> &DominionState::CurrentDeck() {
   return CurrentPlayerState().deck;
 }
 
-const std::vector<Card *> &DominionState::CurrentDeck() const {
+const std::vector<std::optional<Card *>> &DominionState::CurrentDeck() const {
   return CurrentPlayerState().deck;
 }
 
@@ -626,7 +637,7 @@ std::string DominionState::Serialize() const {
   for (const auto &player : players) {
     // Serialize each pile (deck, hand, playing_area, discard)
     // For each pile, first write size, then card indices
-    auto serialize_pile = [&ss](const std::vector<Card *> &pile) {
+    auto serialize_known_pile = [&ss](const std::vector<Card *> &pile) {
       ss << pile.size() << " ";
       for (const Card *card : pile) {
         ss << card_registry::get_id(card->name) << " ";
@@ -634,10 +645,26 @@ std::string DominionState::Serialize() const {
       ss << "\n";
     };
 
-    serialize_pile(player.deck);
-    serialize_pile(player.hand);
-    serialize_pile(player.playing_area);
-    serialize_pile(player.discard);
+    // Special serialization for deck with optional values
+    ss << player.deck.size() << " ";
+    for (const auto &card_opt : player.deck) {
+      ss << (card_opt.has_value() ? "1" : "0") << " ";
+      if (card_opt.has_value()) {
+        ss << card_registry::get_id((*card_opt)->name) << " ";
+      }
+    }
+    ss << "\n";
+
+    // Serialize unknown cards
+    ss << player.unknown_cards.size() << " ";
+    for (const Card *card : player.unknown_cards) {
+      ss << card_registry::get_id(card->name) << " ";
+    }
+    ss << "\n";
+
+    serialize_known_pile(player.hand);
+    serialize_known_pile(player.playing_area);
+    serialize_known_pile(player.discard);
   }
 
   return ss.str();
@@ -687,8 +714,8 @@ std::unique_ptr<State> DominionGame::DeserializeState(
     state->players.emplace_back(false);  // Don't do default setup
     auto &player = state->players.back();
 
-    // Helper to deserialize a pile of cards
-    auto deserialize_pile = [&ss](std::vector<Card *> &pile) {
+    // Helper to deserialize a regular pile of cards
+    auto deserialize_known_pile = [&ss](std::vector<Card *> &pile) {
       int size;
       ss >> size;
       pile.clear();
@@ -700,10 +727,28 @@ std::unique_ptr<State> DominionGame::DeserializeState(
       }
     };
 
-    deserialize_pile(player.deck);
-    deserialize_pile(player.hand);
-    deserialize_pile(player.playing_area);
-    deserialize_pile(player.discard);
+    // Special deserialization for deck with optional values
+    int deck_size;
+    ss >> deck_size;
+    player.deck.clear();
+    player.deck.reserve(deck_size);
+    for (int j = 0; j < deck_size; ++j) {
+      std::string has_value;
+      ss >> has_value;
+      if (has_value == "1") {
+        int card_id;
+        ss >> card_id;
+        player.deck.push_back(card_registry::get(card_id));
+      } else {
+        player.deck.push_back(std::nullopt);
+      }
+    }
+
+    // Deserialize unknown cards
+    deserialize_known_pile(player.unknown_cards);
+    deserialize_known_pile(player.hand);
+    deserialize_known_pile(player.playing_area);
+    deserialize_known_pile(player.discard);
   }
 
   return state;

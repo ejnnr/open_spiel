@@ -127,8 +127,8 @@ class DominionState : public State {
   bool GainCard(size_t card_index, Player player_id = -1);
 
   // Convenience aliases
-  std::vector<Card *> &CurrentDeck();
-  const std::vector<Card *> &CurrentDeck() const;
+  std::vector<std::optional<Card *>> &CurrentDeck();
+  const std::vector<std::optional<Card *>> &CurrentDeck() const;
   std::vector<Card *> &CurrentHand();
   const std::vector<Card *> &CurrentHand() const;
   std::vector<Card *> &CurrentPlayingArea();

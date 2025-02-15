@@ -107,14 +107,12 @@ void SmithyTests() {
   DominionState *dominion_state = static_cast<DominionState *>(state.get());
 
   dominion_state->SampleAllChanceNodes();
-  dominion_state->players[0].hand.clear();
-  dominion_state->players[0].deck.clear();
-  dominion_state->players[0].discard.clear();
+  auto &player = dominion_state->players[0];
+  player.ClearAll();
 
-  dominion_state->players[0].hand.push_back(card_registry::get("Smithy"));
-  dominion_state->players[0].deck.push_back(card_registry::get("Copper"));
-  dominion_state->players[0].discard.push_back(card_registry::get("Silver"));
-  dominion_state->players[0].discard.push_back(card_registry::get("Silver"));
+  player.hand.push_back(card_registry::get("Smithy"));
+  player.SetupUnknownDeck({card_registry::get("Copper")});
+  player.discard = {card_registry::get("Silver"), card_registry::get("Silver")};
 
   // Play Smithy (index 0 in hand)
   dominion_state->PlayCard(0);
@@ -148,27 +146,24 @@ void CouncilRoomTests() {
   std::unique_ptr<State> state = game->NewInitialState();
   DominionState *dominion_state = static_cast<DominionState *>(state.get());
 
-  // Set up specific states for both players
   dominion_state->SampleAllChanceNodes();
+
   // Player 0 (active player):
-  dominion_state->players[0].hand.clear();
-  dominion_state->players[0].deck.clear();
-  dominion_state->players[0].discard.clear();
-  // Add Council Room to hand
-  dominion_state->players[0].hand.push_back(card_registry::get("Council Room"));
-  // Add one card to deck
-  dominion_state->players[0].deck.push_back(card_registry::get("Copper"));
+  auto &player0 = dominion_state->players[0];
+  player0.ClearAll();
+
+  player0.hand.push_back(card_registry::get("Council Room"));
+  player0.SetupUnknownDeck({card_registry::get("Copper")});
+
   // Add three cards to discard (for remaining 3 draws after shuffle)
-  dominion_state->players[0].discard.push_back(card_registry::get("Silver"));
-  dominion_state->players[0].discard.push_back(card_registry::get("Silver"));
-  dominion_state->players[0].discard.push_back(card_registry::get("Silver"));
+  player0.discard = {card_registry::get("Silver"), card_registry::get("Silver"),
+                     card_registry::get("Silver")};
 
   // Player 1:
-  dominion_state->players[1].hand.clear();
-  dominion_state->players[1].deck.clear();
-  dominion_state->players[1].discard.clear();
+  auto &player1 = dominion_state->players[1];
+  player1.ClearAll();
   // Add one card to discard (will need to shuffle to draw)
-  dominion_state->players[1].discard.push_back(card_registry::get("Duchy"));
+  player1.discard.push_back(card_registry::get("Duchy"));
 
   // Play Council Room (index 0 in hand)
   dominion_state->PlayCard(0);
@@ -260,12 +255,10 @@ void ChapelTests() {
 
   // Set up initial state
   dominion_state->SampleAllChanceNodes();
-  dominion_state->players[0].hand.clear();
-  dominion_state->players[0].hand.push_back(card_registry::get("Chapel"));
-  dominion_state->players[0].hand.push_back(card_registry::get("Copper"));
-  dominion_state->players[0].hand.push_back(card_registry::get("Estate"));
-  dominion_state->players[0].deck.clear();
-  dominion_state->players[0].discard.clear();
+  auto &player = dominion_state->players[0];
+  player.ClearAll();
+  player.hand = {card_registry::get("Chapel"), card_registry::get("Copper"),
+                 card_registry::get("Estate")};
 
   // Play Chapel (index 0 in hand)
   dominion_state->PlayCard(0);
@@ -316,14 +309,14 @@ void ThroneRoomTests() {
 
   // Set up initial state
   dominion_state->SampleAllChanceNodes();
-  dominion_state->players[0].hand.clear();
-  dominion_state->players[0].hand.push_back(card_registry::get("Throne Room"));
-  dominion_state->players[0].hand.push_back(card_registry::get("Village"));
-  dominion_state->players[0].deck.clear();
-  dominion_state->players[0].deck.push_back(card_registry::get("Copper"));
-  dominion_state->players[0].deck.push_back(card_registry::get("Copper"));
-  dominion_state->players[0].deck.push_back(card_registry::get("Copper"));
-  dominion_state->players[0].discard.clear();
+  auto &player = dominion_state->players[0];
+  player.ClearAll();
+  player.hand = {card_registry::get("Throne Room"),
+                 card_registry::get("Village")};
+
+  player.SetupUnknownDeck({card_registry::get("Copper"),
+                           card_registry::get("Copper"),
+                           card_registry::get("Copper")});
 
   // Play Throne Room
   dominion_state->PlayCard(0);
@@ -344,19 +337,14 @@ void ThroneRoomTests() {
   SPIEL_CHECK_EQ(dominion_state->n_actions, 4);
 
   // Test Throne Room on Throne Room
-  dominion_state->players[0].hand.clear();
-  dominion_state->players[0].hand.push_back(
-      card_registry::get("Throne Room"));  // First TR
-  dominion_state->players[0].hand.push_back(
-      card_registry::get("Throne Room"));  // Second TR
-  dominion_state->players[0].hand.push_back(card_registry::get("Village"));
-  dominion_state->players[0].hand.push_back(card_registry::get("Village"));
-  dominion_state->players[0].deck.clear();
-  dominion_state->players[0].deck.push_back(card_registry::get("Copper"));
-  dominion_state->players[0].deck.push_back(card_registry::get("Copper"));
-  dominion_state->players[0].deck.push_back(card_registry::get("Copper"));
-  dominion_state->players[0].deck.push_back(card_registry::get("Copper"));
-  dominion_state->players[0].discard.clear();
+  player.ClearAll();
+  player.hand = {card_registry::get("Throne Room"),  // First TR
+                 card_registry::get("Throne Room"),  // Second TR
+                 card_registry::get("Village"), card_registry::get("Village")};
+
+  player.SetupUnknownDeck(
+      {card_registry::get("Copper"), card_registry::get("Copper"),
+       card_registry::get("Copper"), card_registry::get("Copper")});
   dominion_state->n_actions = 1;
 
   // Play first Throne Room
@@ -420,18 +408,18 @@ void LibraryTests() {
 
   // Set up initial state
   dominion_state->SampleAllChanceNodes();
-  dominion_state->players[0].hand.clear();
-  dominion_state->players[0].hand.push_back(card_registry::get("Library"));
-  dominion_state->players[0].deck.clear();
-  dominion_state->players[0].deck.push_back(
-      card_registry::get("Village"));  // Action
-  dominion_state->players[0].deck.push_back(
-      card_registry::get("Copper"));  // Non-action
-  dominion_state->players[0].deck.push_back(
-      card_registry::get("Market"));  // Action
-  dominion_state->players[0].deck.push_back(
-      card_registry::get("Silver"));  // Non-action
-  dominion_state->players[0].discard.clear();
+  auto &player = dominion_state->players[0];
+  player.ClearAll();
+  player.hand = {card_registry::get("Library")};
+
+  // Set up known deck
+  std::vector<Card *> deck = {
+      card_registry::get("Village"),  // Action
+      card_registry::get("Copper"),   // Non-action
+      card_registry::get("Market"),   // Action
+      card_registry::get("Silver")    // Non-action
+  };
+  player.SetupUnknownDeck(deck);
 
   // Play Library
   dominion_state->PlayCard(0);
@@ -482,14 +470,13 @@ void CellarTests() {
 
   // Set up initial state
   dominion_state->SampleAllChanceNodes();
-  dominion_state->players[0].hand.clear();
-  dominion_state->players[0].hand.push_back(card_registry::get("Cellar"));
-  dominion_state->players[0].hand.push_back(card_registry::get("Copper"));
-  dominion_state->players[0].hand.push_back(card_registry::get("Estate"));
-  dominion_state->players[0].deck.clear();
-  dominion_state->players[0].deck.push_back(card_registry::get("Silver"));
-  dominion_state->players[0].deck.push_back(card_registry::get("Gold"));
-  dominion_state->players[0].discard.clear();
+  auto &player = dominion_state->players[0];
+  player.ClearAll();
+  player.hand = {card_registry::get("Cellar"), card_registry::get("Copper"),
+                 card_registry::get("Estate")};
+
+  player.SetupUnknownDeck(
+      {card_registry::get("Silver"), card_registry::get("Gold")});
 
   // Play Cellar (index 0 in hand)
   dominion_state->PlayCard(0);
@@ -540,13 +527,11 @@ void MoneylenderTests() {
   DominionState *dominion_state = static_cast<DominionState *>(state.get());
 
   dominion_state->SampleAllChanceNodes();
-  dominion_state->players[0].hand.clear();
-  dominion_state->players[0].hand.push_back(card_registry::get("Copper"));
-  dominion_state->players[0].hand.push_back(card_registry::get("Moneylender"));
-  dominion_state->players[0].hand.push_back(card_registry::get("Estate"));
-  dominion_state->players[0].hand.push_back(card_registry::get("Copper"));
-  dominion_state->players[0].deck.clear();
-  dominion_state->players[0].discard.clear();
+  auto &player = dominion_state->players[0];
+  player.ClearAll();
+  player.hand = {card_registry::get("Copper"),
+                 card_registry::get("Moneylender"),
+                 card_registry::get("Estate"), card_registry::get("Copper")};
 
   // Play Moneylender
   dominion_state->PlayCard(1);
@@ -581,15 +566,12 @@ void MoneylenderTests() {
   dominion_state->SampleAllChanceNodes();
   dominion_state->n_actions = 1;
   dominion_state->n_coins = 0;
-  dominion_state->players[0].hand.clear();
-  dominion_state->players[0].hand.push_back(card_registry::get("Copper"));
-  dominion_state->players[0].hand.push_back(card_registry::get("Moneylender"));
-  dominion_state->players[0].hand.push_back(card_registry::get("Estate"));
-  dominion_state->players[0].hand.push_back(card_registry::get("Copper"));
-  dominion_state->players[0].deck.clear();
-  dominion_state->players[0].discard.clear();
-  dominion_state->players[0].playing_area.clear();
+  player.ClearAll();
+  player.hand = {card_registry::get("Copper"),
+                 card_registry::get("Moneylender"),
+                 card_registry::get("Estate"), card_registry::get("Copper")};
   dominion_state->trash.clear();
+
   // Play Moneylender
   dominion_state->PlayCard(1);
 
@@ -604,10 +586,9 @@ void MoneylenderTests() {
   // Test playing when no Copper is in hand
   dominion_state->n_actions = 1;
   dominion_state->n_coins = 0;
-  dominion_state->players[0].hand.clear();
-  dominion_state->players[0].hand.push_back(card_registry::get("Moneylender"));
-  dominion_state->players[0].hand.push_back(card_registry::get("Estate"));
-  dominion_state->players[0].hand.push_back(card_registry::get("Cellar"));
+  player.ClearAll();
+  player.hand = {card_registry::get("Moneylender"),
+                 card_registry::get("Estate"), card_registry::get("Cellar")};
   dominion_state->PlayCard(0);
   SPIEL_CHECK_EQ(dominion_state->n_coins, 0);
   // Make sure we're back in the normal action phase, no pending choices.
@@ -620,18 +601,16 @@ void MoneylenderTests() {
 }
 
 void RemodelTests() {
-  std::shared_ptr<const Game> game = LoadGame("dominion");
+  GameParameters params;
+  std::shared_ptr<const Game> game = LoadGame("dominion", params);
   std::unique_ptr<State> state = game->NewInitialState();
-  auto dominion_state =
-      static_cast<open_spiel::dominion::DominionState *>(state.get());
-  dominion_state->SampleAllChanceNodes();
+  DominionState *dominion_state = static_cast<DominionState *>(state.get());
 
-  // Set up test state
-  dominion_state->players[0].hand.clear();
-  dominion_state->players[0].deck.clear();
-  dominion_state->players[0].hand.push_back(card_registry::get("Remodel"));
-  dominion_state->players[0].hand.push_back(card_registry::get("Estate"));
-  dominion_state->players[0].hand.push_back(card_registry::get("Copper"));
+  dominion_state->SampleAllChanceNodes();
+  auto &player = dominion_state->players[0];
+  player.ClearAll();
+  player.hand = {card_registry::get("Remodel"), card_registry::get("Estate"),
+                 card_registry::get("Copper")};
 
   // Play Remodel
   dominion_state->PlayCard(0);
@@ -669,8 +648,8 @@ void RemodelTests() {
 
   // Test playing with empty hand
   dominion_state->n_actions = 1;
-  dominion_state->players[0].hand.clear();
-  dominion_state->players[0].hand.push_back(card_registry::get("Remodel"));
+  player.ClearAll();
+  player.hand = {card_registry::get("Remodel")};
   dominion_state->PlayCard(0);
   // Should be back in action phase with no pending choices
   legal_actions = dominion_state->LegalActions();
@@ -686,61 +665,62 @@ void GardensTests() {
 
   // Set up initial state
   dominion_state->SampleAllChanceNodes();
-  dominion_state->players[0].hand.clear();
-  dominion_state->players[0].deck.clear();
-  dominion_state->players[0].discard.clear();
-  dominion_state->players[0].playing_area.clear();
+  auto &player = dominion_state->players[0];
+  player.ClearAll();
 
   // Test with 0 cards (just Gardens) -> 0 VP
-  dominion_state->players[0].hand.push_back(card_registry::get("Gardens"));
-  SPIEL_CHECK_EQ(dominion_state->players[0].VpCount(), 0);
+  player.hand = {card_registry::get("Gardens")};
+  SPIEL_CHECK_EQ(player.VpCount(), 0);
 
   // Test with 9 cards -> 0 VP
+  std::vector<Card *> known_deck;
   for (int i = 0; i < 8; ++i) {
-    dominion_state->players[0].deck.push_back(card_registry::get("Copper"));
+    known_deck.push_back(card_registry::get("Copper"));
   }
-  SPIEL_CHECK_EQ(dominion_state->players[0].VpCount(), 0);
+  player.SetupKnownDeck(known_deck);
+  SPIEL_CHECK_EQ(player.VpCount(), 0);
 
   // Test with 10 cards -> 1 VP
-  dominion_state->players[0].deck.push_back(card_registry::get("Copper"));
-  SPIEL_CHECK_EQ(dominion_state->players[0].VpCount(), 1);
+  known_deck.push_back(card_registry::get("Copper"));
+  player.SetupKnownDeck(known_deck);
+  SPIEL_CHECK_EQ(player.VpCount(), 1);
 
   // Test with 19 cards -> 1 VP
+  player.discard.clear();
   for (int i = 0; i < 9; ++i) {
-    dominion_state->players[0].discard.push_back(card_registry::get("Copper"));
+    player.discard.push_back(card_registry::get("Copper"));
   }
-  SPIEL_CHECK_EQ(dominion_state->players[0].VpCount(), 1);
+  SPIEL_CHECK_EQ(player.VpCount(), 1);
 
   // Test with 20 cards -> 2 VP
-  dominion_state->players[0].discard.push_back(card_registry::get("Copper"));
-  SPIEL_CHECK_EQ(dominion_state->players[0].VpCount(), 2);
+  player.discard.push_back(card_registry::get("Copper"));
+  SPIEL_CHECK_EQ(player.VpCount(), 2);
 
   // Test with cards spread across all zones
-  dominion_state->players[0].hand.clear();
-  dominion_state->players[0].deck.clear();
-  dominion_state->players[0].discard.clear();
-  dominion_state->players[0].playing_area.clear();
+  player.ClearAll();
 
   // Add 25 cards total (2 VP):
   // - 5 in hand (including Gardens)
   // - 8 in deck
   // - 7 in discard
   // - 5 in playing area
-  dominion_state->players[0].hand.push_back(card_registry::get("Gardens"));
-  for (int i = 0; i < 4; ++i) {
-    dominion_state->players[0].hand.push_back(card_registry::get("Copper"));
-  }
+  player.hand = {card_registry::get("Gardens"), card_registry::get("Copper"),
+                 card_registry::get("Copper"), card_registry::get("Copper"),
+                 card_registry::get("Copper")};
+
+  known_deck.clear();
   for (int i = 0; i < 8; ++i) {
-    dominion_state->players[0].deck.push_back(card_registry::get("Copper"));
+    known_deck.push_back(card_registry::get("Copper"));
   }
+  player.SetupKnownDeck(known_deck);
+
   for (int i = 0; i < 7; ++i) {
-    dominion_state->players[0].discard.push_back(card_registry::get("Copper"));
+    player.discard.push_back(card_registry::get("Copper"));
   }
   for (int i = 0; i < 5; ++i) {
-    dominion_state->players[0].playing_area.push_back(
-        card_registry::get("Copper"));
+    player.playing_area.push_back(card_registry::get("Copper"));
   }
-  SPIEL_CHECK_EQ(dominion_state->players[0].VpCount(), 2);
+  SPIEL_CHECK_EQ(player.VpCount(), 2);
 }
 
 void WitchTests() {
@@ -751,15 +731,16 @@ void WitchTests() {
 
   // Set up initial state
   dominion_state->SampleAllChanceNodes();
-  dominion_state->players[0].hand.clear();
-  dominion_state->players[0].hand.push_back(card_registry::get("Witch"));
-  dominion_state->players[0].deck.clear();
-  dominion_state->players[0].deck.push_back(card_registry::get("Copper"));
-  dominion_state->players[0].deck.push_back(card_registry::get("Silver"));
-  dominion_state->players[0].discard.clear();
-  dominion_state->players[1].hand.clear();
-  dominion_state->players[1].deck.clear();
-  dominion_state->players[1].discard.clear();
+  auto &player0 = dominion_state->players[0];
+  auto &player1 = dominion_state->players[1];
+
+  player0.ClearAll();
+  player0.hand = {card_registry::get("Witch")};
+  std::vector<Card *> deck = {card_registry::get("Copper"),
+                              card_registry::get("Silver")};
+  player0.SetupUnknownDeck(deck);
+
+  player1.ClearAll();
 
   // Check initial VP
   SPIEL_CHECK_EQ(dominion_state->players[0].VpCount(), 0);
@@ -780,11 +761,10 @@ void WitchTests() {
   // Empty curse pile and play witch again
   size_t curse_id = card_registry::get_id("Curse");
   dominion_state->supply_counts[curse_id] = 0;
-  dominion_state->players[0].hand.clear();
-  dominion_state->players[0].hand.push_back(card_registry::get("Witch"));
-  dominion_state->players[0].deck.clear();
-  dominion_state->players[0].deck.push_back(card_registry::get("Copper"));
-  dominion_state->players[0].deck.push_back(card_registry::get("Silver"));
+
+  player0.ClearAll();
+  player0.hand = {card_registry::get("Witch")};
+  player0.SetupUnknownDeck(deck);
 
   // Play Witch with empty curse pile
   dominion_state->PlayCard(0);

@@ -15,8 +15,16 @@ PlayerState::PlayerState(bool default_setup) {
   if (!default_setup) return;
 
   deck.reserve(10);
-  for (int i = 0; i < 3; ++i) deck.push_back(card_registry::get("Estate"));
-  for (int i = 0; i < 7; ++i) deck.push_back(card_registry::get("Copper"));
+  unknown_cards.reserve(10);
+  // In initial setup, all cards are unknown
+  for (int i = 0; i < 3; ++i) {
+    deck.push_back(std::nullopt);
+    unknown_cards.push_back(card_registry::get("Estate"));
+  }
+  for (int i = 0; i < 7; ++i) {
+    deck.push_back(std::nullopt);
+    unknown_cards.push_back(card_registry::get("Copper"));
+  }
 }
 
 Card &PlayerState::PlayCard(size_t hand_index) {
@@ -41,7 +49,14 @@ int PlayerState::VpCount() const {
   for (const auto &card : hand) {
     vp += card->GetVictoryPoints(*this);
   }
-  for (const auto &card : deck) {
+  // Count known cards in deck
+  for (const auto &deck_card : deck) {
+    if (deck_card.has_value()) {
+      vp += deck_card.value()->GetVictoryPoints(*this);
+    }
+  }
+  // Count unknown cards
+  for (const auto &card : unknown_cards) {
     vp += card->GetVictoryPoints(*this);
   }
   return vp;
@@ -68,5 +83,29 @@ int PlayerState::VpCount() const {
 //     Card *card = card_choice->card;
 //     state.current_discard().push_back(card);
 // }
+
+void PlayerState::ClearAll() {
+  deck.clear();
+  unknown_cards.clear();
+  hand.clear();
+  playing_area.clear();
+  discard.clear();
+}
+
+void PlayerState::SetupKnownDeck(const std::vector<Card *> &cards) {
+  deck.clear();
+  unknown_cards.clear();
+  deck.reserve(cards.size());
+  for (Card *card : cards) {
+    deck.push_back(card);
+  }
+}
+
+void PlayerState::SetupUnknownDeck(const std::vector<Card *> &cards) {
+  deck.clear();
+  unknown_cards.clear();
+  deck.resize(cards.size(), std::nullopt);
+  unknown_cards = cards;
+}
 }  // namespace dominion
 }  // namespace open_spiel

@@ -241,5 +241,25 @@ Coroutine<void> Witch::Play(DominionState &state) const {
   co_return;
 }
 
+Coroutine<void> Artisan::Play(DominionState &state) const {
+  std::optional<size_t> supply_card = co_await SelectSupplyCard(state, 5);
+  if (supply_card) {
+    state.GainCard(supply_card.value());
+    // Artisan gains to hand, so move the card there
+    state.CurrentHand().push_back(state.CurrentDiscard().back());
+    state.CurrentDiscard().pop_back();
+  }
+  std::optional<size_t> hand_card = co_await SelectHandCard(state, true);
+  if (hand_card) {
+    // TODO: this is wrong, the card should be top-decked. But the current
+    // implementation doesn't allow that, since we don't track deck order
+    // We'll need to track deck order, where most cards are "unknown"
+    // placeholders.
+    state.CurrentDeck().push_back(state.CurrentHand()[hand_card.value()]);
+    state.CurrentHand().erase(state.CurrentHand().begin() + hand_card.value());
+  }
+  co_return;
+}
+
 }  // namespace dominion
 }  // namespace open_spiel
