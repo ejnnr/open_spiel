@@ -735,6 +735,57 @@ void GardensTests() {
   SPIEL_CHECK_EQ(dominion_state->players[0].VpCount(), 2);
 }
 
+void WitchTests() {
+  GameParameters params;
+  std::shared_ptr<const Game> game = LoadGame("dominion", params);
+  std::unique_ptr<State> state = game->NewInitialState();
+  DominionState *dominion_state = static_cast<DominionState *>(state.get());
+
+  // Set up initial state
+  dominion_state->SampleAllChanceNodes();
+  dominion_state->players[0].hand.clear();
+  dominion_state->players[0].hand.push_back(card_registry::get("Witch"));
+  dominion_state->players[0].deck.clear();
+  dominion_state->players[0].deck.push_back(card_registry::get("Copper"));
+  dominion_state->players[0].deck.push_back(card_registry::get("Silver"));
+  dominion_state->players[0].discard.clear();
+  dominion_state->players[1].discard.clear();
+
+  // Check initial VP
+  SPIEL_CHECK_EQ(dominion_state->players[0].VpCount(), 0);
+  SPIEL_CHECK_EQ(dominion_state->players[1].VpCount(), 0);
+
+  // Play Witch
+  dominion_state->PlayCard(0);
+  dominion_state->SampleAllChanceNodes();
+
+  // Check that player 0 drew 2 cards
+  SPIEL_CHECK_EQ(dominion_state->players[0].hand.size(), 2);
+  SPIEL_CHECK_EQ(dominion_state->players[0].hand[0]->name, "Copper");
+  SPIEL_CHECK_EQ(dominion_state->players[0].hand[1]->name, "Silver");
+
+  // Check that player 1 got a curse
+  SPIEL_CHECK_EQ(dominion_state->players[1].discard.size(), 1);
+  SPIEL_CHECK_EQ(dominion_state->players[1].discard[0]->name, "Curse");
+  SPIEL_CHECK_EQ(dominion_state->players[1].VpCount(), -1);
+
+  // Empty curse pile and play witch again
+  size_t curse_id = card_registry::get_id("Curse");
+  dominion_state->supply_counts[curse_id] = 0;
+  dominion_state->players[0].hand.clear();
+  dominion_state->players[0].hand.push_back(card_registry::get("Witch"));
+  dominion_state->players[0].deck.clear();
+  dominion_state->players[0].deck.push_back(card_registry::get("Copper"));
+  dominion_state->players[0].deck.push_back(card_registry::get("Silver"));
+
+  // Play Witch with empty curse pile
+  dominion_state->PlayCard(0);
+  dominion_state->SampleAllChanceNodes();
+  // Check that player 1 didn't get another curse
+  SPIEL_CHECK_EQ(dominion_state->players[1].discard.size(), 1);
+  SPIEL_CHECK_EQ(dominion_state->players[1].VpCount(), -1);
+}
+
 void BasicDominionTests() {
   testing::LoadGameTest("dominion");
   std::shared_ptr<const Game> game = LoadGame("dominion(small_supply=true)");

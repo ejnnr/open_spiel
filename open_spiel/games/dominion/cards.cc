@@ -229,5 +229,23 @@ Coroutine Library::Play(DominionState &state) const {
   co_return;
 }
 
+Coroutine Witch::Play(DominionState &state) const {
+  // First draw 2 cards
+  co_await state.DrawCard(2);
+
+  // Then each other player gains a curse if available
+  for (size_t i = 0; i < state.players.size(); ++i) {
+    if (i != state.cur_player_) {
+      // Find curse pile index
+      size_t curse_id = card_registry::get_id("Curse");
+      if (state.supply_counts[curse_id] > 0) {
+        state.supply_counts[curse_id]--;
+        state.players[i].discard.push_back(card_registry::get(curse_id));
+      }
+    }
+  }
+  co_return;
+}
+
 }  // namespace dominion
 }  // namespace open_spiel

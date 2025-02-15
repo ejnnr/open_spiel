@@ -24,6 +24,7 @@ void init() {
   registry_vector.push_back(std::make_unique<Estate>());
   registry_vector.push_back(std::make_unique<Duchy>());
   registry_vector.push_back(std::make_unique<Province>());
+  registry_vector.push_back(std::make_unique<Curse>());
   registry_vector.push_back(std::make_unique<Gardens>());
   registry_vector.push_back(std::make_unique<Village>());
   registry_vector.push_back(std::make_unique<Woodcutter>());
@@ -39,6 +40,7 @@ void init() {
   registry_vector.push_back(std::make_unique<Remodel>());
   registry_vector.push_back(std::make_unique<ThroneRoom>());
   registry_vector.push_back(std::make_unique<Library>());
+  registry_vector.push_back(std::make_unique<Witch>());
 
   for (size_t i = 0; i < registry_vector.size(); ++i) {
     Card *card = registry_vector[i].get();

@@ -187,6 +187,14 @@ class Province : public BasicVictory {
   Province() : BasicVictory{8, 6, "Province"} {}
 };
 
+class Curse : public Card {
+ public:
+  Curse() : Card{{}, 0, "Curse"} {}
+  int GetVictoryPoints(const PlayerState &player_state) const override {
+    return -1;
+  }
+};
+
 class Cellar : public Card {
  public:
   Cellar() : Card{{CardType::Action}, 2, "Cellar"} {}
