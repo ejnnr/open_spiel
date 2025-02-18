@@ -251,10 +251,7 @@ Coroutine<void> Artisan::Play(DominionState &state) const {
   }
   std::optional<size_t> hand_card = co_await SelectHandCard(state, true);
   if (hand_card) {
-    // TODO: this is wrong, the card should be top-decked. But the current
-    // implementation doesn't allow that, since we don't track deck order
-    // We'll need to track deck order, where most cards are "unknown"
-    // placeholders.
+    // TODO: refactor this into TopdeckCard method
     state.CurrentDeck().push_back(state.CurrentHand()[hand_card.value()]);
     state.CurrentHand().erase(state.CurrentHand().begin() + hand_card.value());
   }
