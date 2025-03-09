@@ -99,6 +99,8 @@ std::string DominionState::ActionToString(Player player,
   switch (action.type) {
     case ActionType::kEnd:
       return "End";
+    case ActionType::kPlayAllTreasure:
+      return "Play all treasure";
     case ActionType::kSelectSupplyCard:
       return "Select supply card " + card_registry::get(action.index)->name;
     case ActionType::kSelectHandCard:
@@ -118,6 +120,16 @@ int DominionState::CurrentPlayer() const {
     return kTerminalPlayerId;
   } else {
     return cur_player_;
+  }
+}
+
+void DominionState::PlayAllTreasure() {
+  // TODO: when we add special treasure cards, we probably don't want to play
+  // them here.
+
+  // Need to play cards from the end to avoid index shifting
+  for (int i = CurrentHand().size() - 1; i >= 0; --i) {
+    if (CurrentHand()[i]->IsTreasure()) PlayCard(i);
   }
 }
 
@@ -141,6 +153,11 @@ void DominionState::DoApplyAction(Action action_id) {
         PlayCard(action.index);
       } else if (action.type == ActionType::kEnd) {
         NextPhase();
+      } else if (action.type == ActionType::kPlayAllTreasure) {
+        NextPhase();
+        PlayAllTreasure();
+      } else {
+        throw std::runtime_error("Invalid action in action phase");
       }
     } else if (phase == Phase::Buy) {
       if (action.type == ActionType::kSelectSupplyCard) {
@@ -152,6 +169,10 @@ void DominionState::DoApplyAction(Action action_id) {
         PlayCard(action.index);
       } else if (action.type == ActionType::kEnd) {
         NextPhase();
+      } else if (action.type == ActionType::kPlayAllTreasure) {
+        PlayAllTreasure();
+      } else {
+        throw std::runtime_error("Invalid action in buy phase");
       }
     }
   }
@@ -184,6 +205,7 @@ std::vector<Action> DominionState::LegalActions() const {
           actions.push_back(GetActionId(ActionType::kSelectHandCard, i));
       }
     }
+    actions.push_back(GetActionId(ActionType::kPlayAllTreasure));
   } else if (phase == Phase::Buy) {
     for (size_t i = 0; i < CurrentHand().size(); ++i) {
       if (CurrentHand()[i]->IsTreasure())
@@ -196,6 +218,7 @@ std::vector<Action> DominionState::LegalActions() const {
               GetActionId(ActionType::kSelectSupplyCard, card_id));
       }
     }
+    actions.push_back(GetActionId(ActionType::kPlayAllTreasure));
   }
   actions.push_back(GetActionId(ActionType::kEnd));
   std::sort(actions.begin(), actions.end());
@@ -311,8 +334,8 @@ Coroutine<void> DominionState::DrawCardForPlayer(int n, Player player_id) {
         std::iota(pending_legal_actions->begin(), pending_legal_actions->end(),
                   0);
         pending_draw = true;
-        // TODO: a bit weird that we're passing in pending_legal_actions, which
-        // in this case will just be copied into itself
+        // TODO: a bit weird that we're passing in pending_legal_actions,
+        // which in this case will just be copied into itself
         auto action =
             co_await ActionAwaiter{*this, pending_legal_actions.value()};
         pending_draw = false;
@@ -531,8 +554,8 @@ DominionGame::DominionGame(const GameParameters &params, GameType game_type)
       }
     }
   } else if (random_kingdom && kingdom_cards_.size() < 10) {
-    // If random_kingdom is true and we don't have enough cards, randomly select
-    // more
+    // If random_kingdom is true and we don't have enough cards, randomly
+    // select more
     std::vector<size_t> available_kingdom_cards;
     for (size_t i = 0; i < card_registry::num_cards(); ++i) {
       Card *card = card_registry::get(i);
@@ -605,8 +628,8 @@ std::unique_ptr<State> DominionGame::NewInitialState() const {
     state->players.push_back(PlayerState{true});
   }
   // We can't just loop over all players and draw a hand for each; this would
-  // create a coroutine for each player, and continuation_ would be overriden to
-  // the one for the last player. This helper coroutine that draws for all
+  // create a coroutine for each player, and continuation_ would be overriden
+  // to the one for the last player. This helper coroutine that draws for all
   // players lets us keep to a single continuation_.
   state->DrawHandForAllPlayers();
 

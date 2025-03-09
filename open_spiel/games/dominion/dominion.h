@@ -47,6 +47,7 @@ class DominionGame;
 
 enum class ActionType {
   kEnd,
+  kPlayAllTreasure,
   kSelectSupplyCard,
   kSelectHandCard,
 };
@@ -65,14 +66,32 @@ inline std::ostream &operator<<(std::ostream &os,
 constexpr size_t kActionIdBase = 100;
 
 inline Action GetActionId(ActionType type, size_t index = 0) {
-  return static_cast<Action>(static_cast<int>(type) * kActionIdBase + index);
+  if (type == ActionType::kSelectSupplyCard) {
+    return static_cast<Action>(kActionIdBase + index);
+  } else if (type == ActionType::kSelectHandCard) {
+    return static_cast<Action>(2 * kActionIdBase + index);
+  } else {
+    return static_cast<Action>(static_cast<int>(type));
+  }
 }
 
 inline ActionType GetActionType(Action action) {
-  return static_cast<ActionType>(action / kActionIdBase);
+  if (action < kActionIdBase) {
+    return static_cast<ActionType>(action);
+  } else if (action < 2 * kActionIdBase) {
+    return ActionType::kSelectSupplyCard;
+  } else {
+    return ActionType::kSelectHandCard;
+  }
 }
 
-inline size_t GetActionIndex(Action action) { return action % kActionIdBase; }
+inline size_t GetActionIndex(Action action) {
+  if (action < kActionIdBase) {
+    return 0;
+  } else {
+    return action % kActionIdBase;
+  }
+}
 
 struct DominionAction {
   ActionType type;
@@ -156,6 +175,7 @@ class DominionState : public State {
 
  protected:
   void DoApplyAction(Action action_id) override;
+  void PlayAllTreasure();
 
  private:
 };

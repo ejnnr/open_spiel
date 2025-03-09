@@ -558,9 +558,10 @@ void MoneylenderTests() {
   SPIEL_CHECK_EQ(dominion_state->trash[0]->name, "Copper");
 
   legal_actions = dominion_state->LegalActions();
-  // Only legal action should be to end action phase
-  SPIEL_CHECK_EQ(legal_actions.size(), 1);
-  SPIEL_CHECK_EQ(legal_actions[0], 0);
+  // Only legal action should be to end action phase or play all treasure
+  SPIEL_CHECK_EQ(legal_actions.size(), 2);
+  SPIEL_CHECK_EQ(GetActionType(legal_actions[0]), ActionType::kEnd);
+  SPIEL_CHECK_EQ(GetActionType(legal_actions[1]), ActionType::kPlayAllTreasure);
 
   // Reset everything to test choosing not to trash
   dominion_state->SampleAllChanceNodes();
@@ -595,9 +596,11 @@ void MoneylenderTests() {
   // Hack to make Cellar playable:
   dominion_state->n_actions = 1;
   legal_actions = dominion_state->LegalActions();
-  SPIEL_CHECK_EQ(legal_actions.size(), 2);
-  SPIEL_CHECK_EQ(legal_actions[0], 0);
-  SPIEL_CHECK_EQ(legal_actions[1], 201);
+  SPIEL_CHECK_EQ(legal_actions.size(), 3);
+  SPIEL_CHECK_EQ(GetActionType(legal_actions[0]), ActionType::kEnd);
+  SPIEL_CHECK_EQ(GetActionType(legal_actions[1]), ActionType::kPlayAllTreasure);
+  SPIEL_CHECK_EQ(GetActionType(legal_actions[2]), ActionType::kSelectHandCard);
+  SPIEL_CHECK_EQ(GetActionIndex(legal_actions[2]), 1);
 }
 
 void RemodelTests() {
@@ -653,8 +656,9 @@ void RemodelTests() {
   dominion_state->PlayCard(0);
   // Should be back in action phase with no pending choices
   legal_actions = dominion_state->LegalActions();
-  SPIEL_CHECK_EQ(legal_actions.size(), 1);
-  SPIEL_CHECK_EQ(legal_actions[0], 0);
+  SPIEL_CHECK_EQ(legal_actions.size(), 2);
+  SPIEL_CHECK_EQ(GetActionType(legal_actions[0]), ActionType::kEnd);
+  SPIEL_CHECK_EQ(GetActionType(legal_actions[1]), ActionType::kPlayAllTreasure);
 }
 
 void GardensTests() {
@@ -915,6 +919,43 @@ void KnownCardPositionTests() {
   SPIEL_CHECK_EQ(player.hand.back()->name, "Copper");
 }
 
+void PlayAllTreasureTests() {
+  GameParameters params;
+  std::shared_ptr<const Game> game = LoadGame("dominion");
+  std::unique_ptr<State> state = game->NewInitialState();
+  DominionState *dominion_state = static_cast<DominionState *>(state.get());
+
+  // Set up a known state with treasures in hand
+  dominion_state->SampleAllChanceNodes();
+  auto &player = dominion_state->players[0];
+  player.ClearAll();
+
+  // Add some treasure cards to hand
+  player.hand = {card_registry::get("Copper"),  card_registry::get("Silver"),
+                 card_registry::get("Gold"),    card_registry::get("Estate"),
+                 card_registry::get("Village"), card_registry::get("Copper")};
+
+  dominion_state->n_coins = 0;  // Start with 0 coins
+
+  // Play all treasures
+  dominion_state->ApplyAction(GetActionId(ActionType::kPlayAllTreasure));
+
+  // Playing all treasure should have moved us to the buy phase automatically
+  SPIEL_CHECK_EQ(dominion_state->phase, Phase::Buy);
+
+  // Check that all treasures were played
+  SPIEL_CHECK_EQ(player.hand.size(), 2);
+  SPIEL_CHECK_EQ(player.hand[0]->name, "Estate");
+  SPIEL_CHECK_EQ(player.hand[1]->name, "Village");
+
+  // Check that playing area has all the treasures
+  SPIEL_CHECK_EQ(player.playing_area.size(), 4);
+
+  // Check that coins were added correctly
+  // Copper = 1, Silver = 2, Gold = 3, so total should be 1+2+3+1 = 7
+  SPIEL_CHECK_EQ(dominion_state->n_coins, 7);
+}
+
 void BasicDominionTests() {
   testing::LoadGameTest("dominion");
   std::shared_ptr<const Game> game = LoadGame("dominion(small_supply=true)");
@@ -941,5 +982,7 @@ int main(int argc, char **argv) {
   open_spiel::dominion::GardensTests();
   open_spiel::dominion::WitchTests();
   open_spiel::dominion::KingdomSelectionTests();
+  open_spiel::dominion::KnownCardPositionTests();
+  open_spiel::dominion::PlayAllTreasureTests();
   open_spiel::dominion::BasicDominionTests();
 }
