@@ -50,10 +50,13 @@ const GameType kGameType{
     {
         {"players", GameParameter(kDefaultPlayers)},
         {"small_supply", GameParameter(false)},
-        // List of kingdom card names to use, empty means use all cards
+        // List of kingdom card names to use
         {"kingdom_cards", GameParameter(std::string(""))},
         // Whether to randomly select 10 kingdom cards if not enough specified
         {"random_kingdom", GameParameter(false)},
+        // Use every implemented card for the kingdom. kingdom_cards and
+        // random_kingdom are ignored if true.
+        {"full_kingdom", GameParameter(false)},
     }};
 
 std::shared_ptr<const Game> Factory(const GameParameters &params) {
@@ -515,7 +518,8 @@ DominionGame::DominionGame(const GameParameters &params, GameType game_type)
   }
 
   bool random_kingdom = ParameterValue<bool>("random_kingdom");
-  if (kingdom_cards_.empty() && !random_kingdom) {
+  bool full_kingdom = ParameterValue<bool>("full_kingdom");
+  if (full_kingdom) {
     // Use all cards except basic treasures and victory cards
     for (size_t i = 0; i < card_registry::num_cards(); ++i) {
       Card *card = card_registry::get(i);
@@ -744,7 +748,6 @@ std::unique_ptr<State> DominionGame::DeserializeState(
       }
     }
 
-    // Deserialize unknown cards
     deserialize_known_pile(player.unknown_cards);
     deserialize_known_pile(player.hand);
     deserialize_known_pile(player.playing_area);

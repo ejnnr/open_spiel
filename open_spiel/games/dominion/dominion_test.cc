@@ -854,7 +854,7 @@ void KingdomSelectionTests() {
   // Test using all cards
   {
     GameParameters params;
-    params["random_kingdom"] = GameParameter(false);
+    params["full_kingdom"] = GameParameter(true);
     std::shared_ptr<const Game> game = LoadGame("dominion", params);
     std::unique_ptr<State> state = game->NewInitialState();
     DominionState *dominion_state = static_cast<DominionState *>(state.get());
